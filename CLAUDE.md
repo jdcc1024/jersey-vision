@@ -1,33 +1,46 @@
 # CLAUDE.md
 
 Working notes for AI assistants (and humans) on this repo. See README.md for the overview.
+**To create or edit a garment model, use the `garment-model` skill** (`.claude/skills/garment-model/`).
 
-## Invariants — do not break these
-- **UV space = the sewing template.** `assets/template/template.png` is 1656 × 790 px and 1 px = 1 mm. Every UV is a template pixel: Blender `((px+.5)/1656, 1-(py+.5)/790)`, glTF/three.js `v = (py+.5)/790` (so textures use `flipY = false`). Anything that moves UVs must keep this 1:1 mapping.
-- **glTF axes:** Y-up, **front faces +Z**, wearer's left = +X, model centred on the origin, metres. (Blender side: front = −Y, Z-up.)
-- **Orientation of pieces on the template:**
-  - The front piece is drawn as seen from the front, and the back piece as seen from behind.
-  - Sleeve L (top sleeve on the template, pink) is the wearer's left. Its image-left half joins the front armhole.
-  - Sleeve R is the wearer's right. Its image-right half joins the front armhole.
-- **Single mesh, single material.** Consumers swap `material.map` and nothing else, so keep it that way unless there is a strong reason.
-
-## Web (web/index.html)
-- A single file with no bundler. three.js comes from jsDelivr via an import map pinned to `three@0.170.0`. Keep that pin in sync with `package.json` (the test serves three from `node_modules`).
-- The same file is published as a Claude artifact: `npm run build:artifact` inlines the GLB as base64 into `dist/jersey-proof.html` and strips the html/head/body wrapper.
-  - Artifact CSP: scripts only from cdnjs, jsDelivr or unpkg, fonts only from Google Fonts, no downloads started by the page.
-- Print compositing is a 2D canvas at `TEX_SCALE` px/mm, used as a `CanvasTexture`.
-  - The base print is drawn first, then graphic layers `{x, y, w, h, rot, flip}` in template mm (x, y = centre).
-- Test hooks: `window.__jersey()` and `window.__layers()`, used by `web/tests/smoke.mjs`.
-- Always run `npm test` after UI changes. Headless Chromium needs `--use-angle=swiftshader`. Set `PW_CHROMIUM` to point at a local browser binary.
-- The page must work at 400 px width and in both light and dark themes. Colours come from CSS tokens.
+## Invariants: do not break these
+- **UV space = the garment's sewing template** (`garments/<slug>/template.png`). Every UV is a template pixel:
+  Blender `((px+.5)/W, 1-(py+.5)/H)`, glTF/three.js `v = (py+.5)/H` (textures use `flipY = false`).
+  Anything that touches geometry must keep this 1:1 mapping.
+- **glTF axes:** Y-up, metres, **front faces +Z**, wearer's left = +X, model centred on the origin.
+  (Blender side: front = −Y, Z-up, neck point at z = 0 during the build.)
+- **Pieces are drawn as seen from outside** (front from the front, back from behind); otherwise `"flip": true`.
+- **One mesh, one material per garment.** Consumers swap `material.map` and nothing else.
+- **The cloth rest shape is the flat pattern** (shape key `Flat`) so the model matches the template's real size.
+- **`out/` is generated.** Change `garment.json` and re-run; never hand-edit models or manifests.
 
 ## Pipeline
-- `pipeline/prep/*` runs in normal Python (see `pipeline/requirements.txt`) and writes `pipeline/build/`, which is git-ignored and regenerable. It is deterministic: re-running reproduces the same `pattern.json`.
-- `pipeline/blender/*` runs in Blender 5.2+. Scripts find the repo root from `__file__`, or from `JERSEY_ROOT` if set.
-  - From a live Blender (e.g. Blender MCP), exec a script with `{'__file__': <path>}` in its globals.
-  - The cloth cache is only valid while the `JerseySim` object is untouched. Step 02 moves it, so re-run step 01 plus the sim before re-running step 02.
-- The glTF exporter's keyword names changed in Blender 5 (e.g. `export_texcoords`). Check `bpy.ops.export_scene.gltf.get_rna_type().properties` when upgrading.
+- Python half: `python pipeline/gk.py <cmd> <garment>` (`new, rasterize, inspect, pattern, seammap, body,
+  texture, prep, check, compare, register`). Plain Python, deps in `pipeline/requirements.txt`. Writes
+  `garments/<g>/build/` (git-ignored) and `out/texture.png`, `out/manifest.json`.
+- Blender half: `pipeline/blender/run.py` (or `sim.py`, `finish.py`, `export.py` separately).
+  `blender -b --python pipeline/blender/run.py -- <garment>`, or exec in a live Blender with
+  `{'__file__': path, 'GARMENT': slug}`. `sim.py` clears the scene. The cloth cache resets if `GarmentSim`
+  is modified between frame steps.
+- Everything the Blender half needs is resolved into `build/pattern.json` by `pattern.py`, so the Blender
+  scripts stay generic. New garment behaviour goes into the spec → pattern.py → sim.py/finish.py.
+- After engine changes: `python pipeline/tests/run_engine_tests.py` (crew-tee + fixtures), and rebuild
+  crew-tee to check it still matches `docs/images/compare_to_mockup.png`.
+- glTF exporter kwargs differ between Blender 4.x and 5.x; use `gk_blender.gltf_kwargs()`.
+
+## Web (web/index.html)
+- Single file, no bundler. three.js from jsDelivr via an import map pinned to `three@0.170.0`; keep it in
+  sync with `package.json` (the test serves three from `node_modules`).
+- Reads `garments/index.json` → `<garment>/out/manifest.json` (template size, pieces, model file, sample
+  graphic). `#<slug>` in the URL selects a garment. `npm run build:artifact` inlines index, manifests and
+  GLBs into `dist/jersey-proof.html` (artifact fragment; the artifact CSP allows only cdnjs/jsDelivr/unpkg
+  scripts, Google Fonts, no downloads started by the page).
+- Print compositing: 2D canvas (`TEX_SCALE` px per template px) as a `CanvasTexture`; layers are
+  `{x, y, w, h, rot, flip}` in template px (x, y = centre); the UI shows mm (`MMPP`).
+- Test hooks `window.__jersey()`, `window.__layers()`; run `npm test` after UI changes (headless Chromium
+  needs `--use-angle=swiftshader`; `PW_CHROMIUM` points at a browser binary). Must work at 400 px and in
+  both themes (CSS tokens).
 
 ## Commits
-- Keep generated files out of git (`dist/`, `pipeline/build/`, `web/tests/output/`).
-- Committed binaries: `assets/model/*.glb`, `assets/model/jersey.blend`, and images in `assets/` and `docs/`. When you regenerate the model, re-export all three model files together.
+- Commit `garments/<slug>/` (spec, template, references, out/) but not `build/`, `dist/`, `web/tests/output/`.
+- Re-export all of a garment's `out/` files together.

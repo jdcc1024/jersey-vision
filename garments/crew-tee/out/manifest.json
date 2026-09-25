@@ -1,0 +1,113 @@
+{
+ "name": "Crew-neck short-sleeve jersey",
+ "slug": "crew-tee",
+ "type": "set-in short sleeve, crew neck",
+ "template": {
+  "file": "../template.png",
+  "width_px": 1656,
+  "height_px": 790,
+  "mm_per_px": 1.0
+ },
+ "model": "model.glb",
+ "model_untextured": "model_untextured.glb",
+ "texture": "texture.png",
+ "object_name": "Jersey",
+ "axes": "glTF Y-up, metres, front faces +Z, wearer's left +X, centred on origin",
+ "uv": "u = (px + 0.5) / width_px, v = (py + 0.5) / height_px (glTF, top-down); textures use flipY = false",
+ "pieces": [
+  {
+   "name": "front",
+   "label": "Front",
+   "bbox": [
+    15,
+    15,
+    547,
+    757
+   ]
+  },
+  {
+   "name": "back",
+   "label": "Back",
+   "bbox": [
+    573,
+    18,
+    548,
+    757
+   ]
+  },
+  {
+   "name": "sleeve_L",
+   "label": "Sleeve L",
+   "bbox": [
+    1132,
+    229,
+    518,
+    266
+   ]
+  },
+  {
+   "name": "sleeve_R",
+   "label": "Sleeve R",
+   "bbox": [
+    1132,
+    507,
+    518,
+    266
+   ]
+  },
+  {
+   "name": "neck",
+   "label": "Neck rib",
+   "bbox": [
+    1144,
+    133,
+    494,
+    61
+   ]
+  },
+  {
+   "name": "inner_neck",
+   "label": "Inner neck tape",
+   "bbox": [
+    1207,
+    67,
+    368,
+    39
+   ]
+  },
+  {
+   "name": "size_tag",
+   "label": "Size tag",
+   "bbox": [
+    1350,
+    10,
+    83,
+    39
+   ]
+  }
+ ],
+ "piece_notes": {
+  "front": "outer, faces +Z",
+  "back": "outer, faces -Z",
+  "sleeve_L": "wearer's left",
+  "sleeve_R": "wearer's right",
+  "neck": "folded, 30 mm",
+  "inner_neck": "inside back",
+  "size_tag": "inside back"
+ },
+ "sample_graphic": {
+  "name": "Smiley (sample)",
+  "rect": [
+   1350,
+   331,
+   82,
+   102
+  ],
+  "knockout": "dark",
+  "place": [
+   452,
+   205,
+   62
+  ]
+ }
+}

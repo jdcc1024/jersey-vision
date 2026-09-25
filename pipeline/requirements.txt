@@ -1,7 +1,8 @@
-# pipeline/prep and pipeline/tools (plain Python 3.10+, not Blender's Python)
+# garmentkit (pipeline/gk.py) - plain Python 3.10+, not Blender's bundled Python
 numpy>=1.24
 pillow>=10
 opencv-python-headless>=4.8
 triangle>=20230923
 scikit-image>=0.21
 pygltflib>=1.16
+pymupdf>=1.24        # only for SVG / PDF templates (gk rasterize)

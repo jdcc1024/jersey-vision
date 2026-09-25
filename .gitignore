@@ -4,6 +4,9 @@ node_modules/
 # generated
 dist/
 pipeline/build/
+garments/*/build/
+pipeline/tests/fixtures/*/build/
+pipeline/tests/fixtures/*/out/
 web/tests/output/
 __pycache__/
 *.pyc

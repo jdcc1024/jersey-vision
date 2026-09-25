@@ -37,6 +37,9 @@ header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
 h1{font:700 30px/1 var(--display);letter-spacing:.02em;text-transform:uppercase;margin:0;text-wrap:balance}
 h1 span{color:var(--accent)}
 .meta{font:12px/1.4 var(--mono);color:var(--muted)}
+.head-right{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.picker{display:flex;align-items:baseline;gap:8px;font:600 12px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.picker select{font:14px/1.2 var(--body);letter-spacing:0;text-transform:none;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
 main{display:grid;grid-template-columns:minmax(0,1fr) minmax(400px,1.05fr);gap:16px;align-items:start}
 @media (max-width:1000px){main{grid-template-columns:minmax(0,1fr)}}
 .stage{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 12px);height:clamp(460px, calc(100dvh - 110px), 980px);border-radius:10px;overflow:hidden;
@@ -49,7 +52,7 @@ main{display:grid;grid-template-columns:minmax(0,1fr) minmax(400px,1.05fr);gap:1
   background:var(--chip);color:var(--ink);padding:9px 12px;border-radius:999px;cursor:pointer;backdrop-filter:blur(6px)}
 .chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .chip:disabled{opacity:.45;cursor:not-allowed}
-.chip:focus-visible,.btn:focus-visible,#uv:focus-visible,.layer:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chip:focus-visible,.btn:focus-visible,#uv:focus-visible,.layer:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .status{position:absolute;top:12px;left:12px;right:12px;font:12px/1.3 var(--mono);color:var(--muted)}
 aside{display:flex;flex-direction:column;gap:14px;min-width:0}
 section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
@@ -99,7 +102,10 @@ input[type=file]{display:none}
 <div class="wrap">
   <header>
     <h1>Jersey <span>3D</span> Proof</h1>
-    <div class="meta">Template 1656 × 790 px · 1 px = 1 mm · UV = sewing pattern</div>
+    <div class="head-right">
+      <label class="picker" id="picker" hidden>Garment <select id="garment"></select></label>
+      <div class="meta" id="tmeta">Loading…</div>
+    </div>
   </header>
   <main>
     <div class="stage" id="stage">
@@ -161,19 +167,11 @@ input[type=file]{display:none}
       <div class="lower">
         <section aria-labelledby="h-pieces">
           <h2 id="h-pieces">Pattern pieces</h2>
-          <ul class="pieces">
-            <li>Front <small>outer, faces +Z</small></li>
-            <li>Back <small>outer, faces −Z</small></li>
-            <li>Sleeve L <small>wearer's left</small></li>
-            <li>Sleeve R <small>wearer's right</small></li>
-            <li>Neck rib <small>folded, 30 mm</small></li>
-            <li>Inner neck tape <small>inside back</small></li>
-            <li>Size tag <small>inside back</small></li>
-          </ul>
+          <ul class="pieces" id="piece-list"></ul>
         </section>
         <section aria-labelledby="h-model">
           <h2 id="h-model">Model</h2>
-          <dl id="stats"><dt>File</dt><dd>jersey.glb</dd></dl>
+          <dl id="stats"><dt>File</dt><dd>—</dd></dl>
         </section>
       </div>
       <section aria-labelledby="h-code">
@@ -199,13 +197,16 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const GLB_SOURCE = "../assets/model/jersey.glb";   // URL ending in .glb, or base64 GLB (tools/build-artifact.mjs inlines it)
-const TW = 1656, TH = 790;                     // template artboard, px == mm
-const TEX_SCALE = 2;                           // print texture resolution: 2 px per mm
-const PIECES = [                               // template boxes, used to name where a graphic lands
-  ['Front', 15, 15, 547, 757], ['Back', 573, 18, 548, 757], ['Sleeve L', 1132, 229, 518, 266],
-  ['Sleeve R', 1132, 507, 518, 266], ['Neck rib', 1144, 133, 494, 61], ['Inner neck tape', 1207, 67, 368, 39],
-  ['Size tag', 1350, 10, 83, 39]];
+// Garments come from ../garments/index.json and each garment's out/manifest.json.
+// tools/build-artifact.mjs replaces EMBED with {index, manifests, glbs} so the page is self-contained.
+const EMBED = /*__EMBED__*/null;
+const GARMENTS_ROOT = '../garments/';
+let TW = 1656, TH = 790;                       // template artboard in px (set from the manifest)
+let MMPP = 1;                                  // template mm per px
+let TEX_SCALE = 2;                             // print texture px per template px
+let PIECES = [];                               // [label, x, y, w, h] template boxes, to name where a graphic lands
+let MANIFEST = null;
+const mm = (px) => px * MMPP, pxOf = (v) => v / MMPP;
 const $ = (id) => document.getElementById(id);
 const stage = $('stage'), canvas = $('gl'), status = $('status');
 
@@ -244,10 +245,8 @@ new ResizeObserver(resize).observe(stage);
 
 // ------------------------------------------------------------------ print composition
 const texCanvas = document.createElement('canvas');
-texCanvas.width = TW * TEX_SCALE; texCanvas.height = TH * TEX_SCALE;
 const texCtx = texCanvas.getContext('2d');
-const printTex = new THREE.CanvasTexture(texCanvas);
-printTex.flipY = false; printTex.colorSpace = THREE.SRGBColorSpace;
+let printTex = null;                           // created once the template size is known
 
 let jersey = null, sampleBase = null, base = null, seamLines = null, uvEdges = null, pieceMask = null;
 let layers = [], selected = null, nextId = 1;
@@ -268,13 +267,39 @@ let texDirty = false;
 function refresh() { texDirty = true; drawUV(); renderLayerList(); syncEditor(); }
 
 // ------------------------------------------------------------------ load model
-function loadModel(onLoad) {
+const fail = (err) => { status.textContent = 'Could not load the garment: ' + (err && err.message || err); };
+async function getJSON(url) { const r = await fetch(url); if (!r.ok) throw new Error(`${url}: ${r.status}`); return r.json(); }
+async function boot() {
+  const index = EMBED ? EMBED.index : await getJSON(GARMENTS_ROOT + 'index.json');
+  const want = location.hash.slice(1);
+  const entry = index.garments.find(g => g.slug === want) || index.garments.find(g => g.slug === index.default) || index.garments[0];
+  MANIFEST = EMBED ? EMBED.manifests[entry.slug] : await getJSON(GARMENTS_ROOT + entry.path);
+  TW = MANIFEST.template.width_px; TH = MANIFEST.template.height_px; MMPP = MANIFEST.template.mm_per_px;
+  TEX_SCALE = Math.min(2 * MMPP, 8192 / TW, 8192 / TH);
+  PIECES = MANIFEST.pieces.map(p => [p.label, ...p.bbox]);
+  texCanvas.width = Math.round(TW * TEX_SCALE); texCanvas.height = Math.round(TH * TEX_SCALE);
+  printTex = new THREE.CanvasTexture(texCanvas);
+  printTex.flipY = false; printTex.colorSpace = THREE.SRGBColorSpace;
+  uvBox.style.aspectRatio = `${TW} / ${TH}`;
+  $('tmeta').textContent = `${MANIFEST.name} · template ${TW} × ${TH} px · 1 px = ${MMPP} mm · UV = sewing pattern`;
+  document.title = 'Jersey 3D Proof';
+  renderPieceList(); fillPicker(index, entry.slug); sizeUV();
   const loader = new GLTFLoader();
-  const fail = (err) => { status.textContent = 'Could not load the model: ' + (err && err.message || err); };
-  if (GLB_SOURCE.endsWith('.glb')) loader.load(GLB_SOURCE, onLoad, undefined, fail);
-  else loader.parse(Uint8Array.from(atob(GLB_SOURCE), c => c.charCodeAt(0)).buffer, '', onLoad, fail);
+  if (EMBED) loader.parse(Uint8Array.from(atob(EMBED.glbs[entry.slug]), c => c.charCodeAt(0)).buffer, '', onModel, fail);
+  else loader.load(GARMENTS_ROOT + entry.path.replace(/[^/]*$/, '') + MANIFEST.model, onModel, undefined, fail);
 }
-loadModel((gltf) => {
+function fillPicker(index, slug) {
+  const sel = $('garment');
+  sel.innerHTML = index.garments.map(g => `<option value="${g.slug}">${g.name.replace(/</g, '&lt;')}</option>`).join('');
+  sel.value = slug;
+  $('picker').hidden = index.garments.length < 2;
+}
+$('garment').addEventListener('change', (e) => { location.hash = e.target.value; location.reload(); });
+function renderPieceList() {
+  const notes = MANIFEST.piece_notes || {};
+  $('piece-list').innerHTML = MANIFEST.pieces.map(p => `<li>${p.label.replace(/</g, '&lt;')} <small>${(notes[p.name] || `${Math.round(mm(p.bbox[2]))} × ${Math.round(mm(p.bbox[3]))} mm`).replace(/</g, '&lt;')}</small></li>`).join('');
+}
+function onModel(gltf) {
   gltf.scene.traverse(o => { if (o.isMesh) jersey = o; });
   scene.add(gltf.scene);
   const m = jersey.material;
@@ -287,7 +312,7 @@ loadModel((gltf) => {
   addSampleGraphic();
   status.textContent = 'Drag to orbit · scroll to zoom';
   setView('front');
-});
+}
 
 function buildEdges() {
   const g = jersey.geometry, idx = g.index.array, uv = g.attributes.uv.array, pos = g.attributes.position.array;
@@ -342,9 +367,9 @@ function writeStats() {
   const g = jersey.geometry; g.computeBoundingBox();
   const s = new THREE.Vector3(); g.boundingBox.getSize(s);
   const cm = v => (v * 100).toFixed(1);
-  const rows = [['File', 'jersey.glb'], ['Vertices', g.attributes.position.count.toLocaleString()],
+  const rows = [['File', MANIFEST.model], ['Vertices', g.attributes.position.count.toLocaleString()],
     ['Triangles', (g.index.count / 3).toLocaleString()], ['Size', `${cm(s.x)} × ${cm(s.y)} × ${cm(s.z)} cm`],
-    ['UV set', 'TEXCOORD_0'], ['Print texture', `${TW * TEX_SCALE} × ${TH * TEX_SCALE} px`]];
+    ['UV set', 'TEXCOORD_0'], ['Print texture', `${texCanvas.width} × ${texCanvas.height} px`]];
   $('stats').innerHTML = rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
 }
 
@@ -359,13 +384,14 @@ function alphaGrid(img) {
 function addLayer(img, name, opts = {}) {
   const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
   const w = opts.w || Math.min(180, iw), h = w * ih / iw;
-  const L = { id: nextId++, name, img, x: opts.x ?? 288, y: opts.y ?? 260, w, h, ratio: ih / iw, rot: opts.rot || 0, flip: false, alpha: alphaGrid(img) };
+  const L = { id: nextId++, name, img, x: opts.x ?? TW / 4, y: opts.y ?? TH / 3, w, h, ratio: ih / iw, rot: opts.rot || 0, flip: false, alpha: alphaGrid(img) };
   layers.push(L); select(L); refresh(); return L;
 }
 function addSampleGraphic() {
-  if (!sampleBase) { refresh(); return; }
-  // cut the pink smiley off the left sleeve of the sample print and knock out the black
-  const sx = 1350, sy = 331, sw = 82, sh = 102, k = 4;
+  const sg = MANIFEST && MANIFEST.sample_graphic;
+  if (!sampleBase || !sg) { refresh(); return; }
+  // cut a graphic out of the sample print (manifest.sample_graphic) and knock out the dark ground
+  const [sx, sy, sw, sh] = sg.rect, k = 4;
   const c = document.createElement('canvas'); c.width = sw * k; c.height = sh * k;
   const x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
   x.drawImage(sampleBase, sx, sy, sw, sh, 0, 0, sw * k, sh * k);
@@ -375,7 +401,7 @@ function addSampleGraphic() {
     d.data[i+3] = Math.max(0, Math.min(255, (m - 45) * 3.2));
   }
   x.putImageData(d, 0, 0);
-  addLayer(c, 'Smiley (sample)', { x: 452, y: 205, w: 62 });
+  addLayer(c, sg.name || 'Sample graphic', { x: sg.place[0], y: sg.place[1], w: sg.place[2] });
 }
 function select(L) { selected = L; renderLayerList(); syncEditor(); drawUV(); updatePlaceChip(); }
 function removeLayer(L) { layers = layers.filter(l => l !== L); if (selected === L) selected = layers[layers.length - 1] || null; refresh(); updatePlaceChip(); }
@@ -395,7 +421,7 @@ function renderLayerList() {
     tx.drawImage(L.img, 36 - L.w * r / 2, 36 - L.h * r / 2, L.w * r, L.h * r);
     const info = document.createElement('div');
     const cov = coverage(L);
-    info.innerHTML = `<div class="nm"></div><div class="on">${cov.pieces.join(' + ') || 'Off the pattern'} · ${Math.round(L.w)} × ${Math.round(L.h)} mm</div>`;
+    info.innerHTML = `<div class="nm"></div><div class="on">${cov.pieces.join(' + ') || 'Off the pattern'} · ${Math.round(mm(L.w))} × ${Math.round(mm(L.h))} mm</div>`;
     info.querySelector('.nm').textContent = L.name;
     const del = document.createElement('button'); del.textContent = 'Remove'; del.setAttribute('aria-label', 'Remove ' + L.name);
     del.addEventListener('click', (e) => { e.stopPropagation(); removeLayer(L); });
@@ -413,8 +439,8 @@ function syncEditor() {
   if (!selected) return;
   const L = selected, act = document.activeElement;
   const set = (el, v) => { if (el !== act) el.value = v; };
-  set(P.x, Math.round(L.x)); set(P.y, Math.round(L.y)); set(P.w, Math.round(L.w)); set(P.h, Math.round(L.h));
-  set(P.s, Math.round(L.w)); $('o-s').textContent = Math.round(L.w) + ' mm';
+  set(P.x, Math.round(mm(L.x))); set(P.y, Math.round(mm(L.y))); set(P.w, Math.round(mm(L.w))); set(P.h, Math.round(mm(L.h)));
+  set(P.s, Math.round(mm(L.w))); $('o-s').textContent = Math.round(mm(L.w)) + ' mm';
   set(P.r, Math.round(L.rot)); $('o-r').textContent = Math.round(L.rot) + '°';
   const cov = coverage(L);
   let msg = `Center lands on ${pieceAt(L.x, L.y) || 'no piece (off the pattern)'}.`;
@@ -423,11 +449,11 @@ function syncEditor() {
   $('cover').textContent = msg;
 }
 const num = (el) => parseFloat(el.value);
-P.x.addEventListener('input', () => { if (selected && !isNaN(num(P.x))) { selected.x = num(P.x); refresh(); } });
-P.y.addEventListener('input', () => { if (selected && !isNaN(num(P.y))) { selected.y = num(P.y); refresh(); } });
-P.w.addEventListener('input', () => { if (selected && num(P.w) >= 2) { selected.w = num(P.w); selected.h = selected.w * selected.ratio; refresh(); } });
-P.h.addEventListener('input', () => { if (selected && num(P.h) >= 2) { selected.h = num(P.h); selected.w = selected.h / selected.ratio; refresh(); } });
-P.s.addEventListener('input', () => { if (selected) { selected.w = num(P.s); selected.h = selected.w * selected.ratio; refresh(); } });
+P.x.addEventListener('input', () => { if (selected && !isNaN(num(P.x))) { selected.x = pxOf(num(P.x)); refresh(); } });
+P.y.addEventListener('input', () => { if (selected && !isNaN(num(P.y))) { selected.y = pxOf(num(P.y)); refresh(); } });
+P.w.addEventListener('input', () => { if (selected && num(P.w) >= 2) { selected.w = pxOf(num(P.w)); selected.h = selected.w * selected.ratio; refresh(); } });
+P.h.addEventListener('input', () => { if (selected && num(P.h) >= 2) { selected.h = pxOf(num(P.h)); selected.w = selected.h / selected.ratio; refresh(); } });
+P.s.addEventListener('input', () => { if (selected) { selected.w = pxOf(num(P.s)); selected.h = selected.w * selected.ratio; refresh(); } });
 P.r.addEventListener('input', () => { if (selected) { selected.rot = num(P.r); refresh(); } });
 $('flip').addEventListener('click', () => { if (selected) { selected.flip = !selected.flip; refresh(); } });
 $('fwd').addEventListener('click', () => {
@@ -516,7 +542,7 @@ uv.addEventListener('pointerdown', (e) => {
 });
 uv.addEventListener('pointermove', (e) => {
   const [x, y] = toTemplate(e);
-  $('cursor').textContent = `x ${Math.round(x)} · y ${Math.round(y)} mm · ${pieceAt(x, y) || 'off pattern'}`;
+  $('cursor').textContent = `x ${Math.round(mm(x))} · y ${Math.round(mm(y))} mm · ${pieceAt(x, y) || 'off pattern'}`;
   if (!drag) {
     let cur = 'default';
     if (selected) {
@@ -592,14 +618,14 @@ function addGraphicFile(f) {
     $('ratio').hidden = true;
     const piece = selected ? PIECES.find(([n]) => n === pieceAt(selected.x, selected.y)) : null;
     const [, px, py, pw, ph] = piece || PIECES[0];
-    addLayer(img, f.name, { x: px + pw / 2, y: py + Math.min(ph / 2, 260), w: Math.min(160, pw * 0.5) });
+    addLayer(img, f.name, { x: px + pw / 2, y: py + Math.min(ph / 2, pxOf(260)), w: Math.min(pxOf(160), pw * 0.5) });
   });
 }
 function setBaseFile(f) {
   readImage(f, (img) => {
     base = img; refresh();
     const r = img.width / img.height, want = TW / TH, w = $('ratio');
-    if (Math.abs(r - want) / want > 0.01) { w.hidden = false; w.textContent = `This base print is ${r.toFixed(3)} : 1 but the template artboard is ${want.toFixed(3)} : 1 (1656 × 790), so it is stretched. Re-export it on the full template artboard.`; }
+    if (Math.abs(r - want) / want > 0.01) { w.hidden = false; w.textContent = `This base print is ${r.toFixed(3)} : 1 but the template artboard is ${want.toFixed(3)} : 1 (${TW} × ${TH}), so it is stretched. Re-export it on the full template artboard.`; }
     else w.hidden = true;
   });
 }
@@ -616,22 +642,23 @@ for (const t of [uvBox, stage]) {
     const f = e.dataTransfer.files[0]; if (!f) return;
     readImage(f, (img) => {   // full-artboard images replace the base print, anything else becomes a graphic
       if (Math.abs(img.width / img.height - TW / TH) / (TW / TH) < 0.01 && img.width >= TW * 0.9) { base = img; $('ratio').hidden = true; refresh(); }
-      else addLayer(img, f.name, { x: 288, y: 260, w: 160 });
+      else addLayer(img, f.name, { x: PIECES[0][1] + PIECES[0][3] / 2, y: PIECES[0][2] + PIECES[0][4] / 3, w: pxOf(160) });
     });
   });
 }
 $('copy').addEventListener('click', async () => {
-  const data = layers.map(L => ({ name: L.name, center_mm: [Math.round(L.x), Math.round(L.y)], size_mm: [Math.round(L.w), Math.round(L.h)], rotation_deg: Math.round(L.rot), flipped: L.flip, piece: pieceAt(L.x, L.y) }));
-  const txt = JSON.stringify({ template: '1656x790 mm', graphics: data }, null, 2);
+  const data = layers.map(L => ({ name: L.name, center_mm: [Math.round(mm(L.x)), Math.round(mm(L.y))], size_mm: [Math.round(mm(L.w)), Math.round(mm(L.h))], rotation_deg: Math.round(L.rot), flipped: L.flip, piece: pieceAt(L.x, L.y) }));
+  const txt = JSON.stringify({ garment: MANIFEST.slug, template_px: [TW, TH], mm_per_px: MMPP, graphics: data }, null, 2);
   try { await navigator.clipboard.writeText(txt); $('copied').textContent = `Copied ${data.length} placement${data.length === 1 ? '' : 's'} as JSON (mm from the template's top-left corner).`; }
   catch { $('copied').textContent = txt; }
 });
 
 // ------------------------------------------------------------------ loop
 renderer.setAnimationLoop(() => {
-  if (texDirty) { texCtx.clearRect(0, 0, texCanvas.width, texCanvas.height); drawPrint(texCtx, TEX_SCALE); printTex.needsUpdate = true; texDirty = false; }
+  if (texDirty && printTex) { texCtx.clearRect(0, 0, texCanvas.width, texCanvas.height); drawPrint(texCtx, TEX_SCALE); printTex.needsUpdate = true; texDirty = false; }
   controls.update(); renderer.render(scene, camera);
 });
+boot().catch(fail);
 window.__jersey = () => jersey;
 window.__layers = () => layers;
 </script>

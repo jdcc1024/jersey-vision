@@ -1,57 +1,60 @@
-"""Quick workbench preview renders (front / back / side / 3-4) into build/preview_<tag>_<view>.png"""
-import bpy, math, os
-def _repo_root():
-    r = globals().get('JERSEY_ROOT')
-    if r:
-        return r
-    f = globals().get('__file__')
-    if f and os.path.exists(f):
-        return os.path.abspath(os.path.join(os.path.dirname(f), '..', '..'))
-    raise RuntimeError("Run with __file__ set (blender --python <script>) or define JERSEY_ROOT")
+"""Quick Workbench previews (orthographic) -> garments/<g>/build/previews/<TAG>_<view>.png
 
+Globals: GARMENT, TAG ('x'), VIEWS (['front','back','side','q34']), TEXTURED (True),
+SHOW_BODY (False), RES (700). Frames whatever garment objects are visible.
+"""
+import importlib
+import math
+import os
+import sys
 
-ROOT = _repo_root()
-BUILD = os.path.join(ROOT, 'pipeline', 'build')
-MODEL = os.path.join(ROOT, 'assets', 'model')
-TEMPLATE_DIR = os.path.join(ROOT, 'assets', 'template')
-os.makedirs(BUILD, exist_ok=True)
-os.makedirs(MODEL, exist_ok=True)
-OUT = os.path.join(BUILD, 'previews')
+import bpy
+import mathutils
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(globals().get('__file__') or __file__)))
+import gk_blender as gk  # noqa: E402
+importlib.reload(gk)
+
+C = gk.context(globals())
+OUT = os.path.join(C.build, 'previews')
 os.makedirs(OUT, exist_ok=True)
 TAG = globals().get('TAG', 'x')
 VIEWS = globals().get('VIEWS', ['front', 'back', 'side', 'q34'])
+TEXTURED = globals().get('TEXTURED', True)
 SHOW_BODY = globals().get('SHOW_BODY', False)
-TEXTURED = globals().get('TEXTURED', False)
-CENTER = globals().get('CENTER', (0, 0, -0.38))
 RES = globals().get('RES', 700)
-
 scene = bpy.context.scene
+
+body = bpy.data.objects.get('Mannequin')
+if body:
+    body.hide_render = not SHOW_BODY
+targets = [o for o in scene.objects if o.type == 'MESH' and not o.hide_render]
+pts = [o.matrix_world @ mathutils.Vector(c) for o in targets for c in o.bound_box]
+lo = mathutils.Vector([min(p[i] for p in pts) for i in range(3)])
+hi = mathutils.Vector([max(p[i] for p in pts) for i in range(3)])
+ctr = (lo + hi) / 2
 cam = bpy.data.objects.get('PreviewCam')
 if cam is None:
     cam = bpy.data.objects.new('PreviewCam', bpy.data.cameras.new('PreviewCam'))
     scene.collection.objects.link(cam)
 cam.data.type = 'ORTHO'
-cam.data.ortho_scale = globals().get('ORTHO', 1.05)
+cam.data.ortho_scale = max(hi - lo) * 1.1
+prev_cam = scene.camera
 scene.camera = cam
 scene.render.engine = 'BLENDER_WORKBENCH'
 scene.display.shading.light = 'STUDIO'
 scene.display.shading.color_type = 'TEXTURE' if TEXTURED else 'OBJECT'
-scene.display.shading.show_cavity = False
-scene.render.resolution_x = RES; scene.render.resolution_y = RES
+scene.render.resolution_x = scene.render.resolution_y = RES
 scene.render.film_transparent = False
-body = bpy.data.objects.get('Mannequin')
-if body: body.hide_render = not SHOW_BODY
-cx, cy, cz = CENTER
-dirs = {'front': (0, -1, 0), 'back': (0, 1, 0), 'side': (1, 0, 0), 'q34': (0.7, -0.7, 0.15), 'top': (0, -0.2, 1)}
+dirs = {'front': (0, -1, 0), 'back': (0, 1, 0), 'side': (1, 0, 0), 'left': (1, 0, 0), 'right': (-1, 0, 0),
+        'q34': (0.7, -0.7, 0.15), 'top': (0, -0.2, 1)}
 paths = []
 for v in VIEWS:
-    d = dirs[v]
-    n = math.sqrt(sum(c * c for c in d)); d = [c / n for c in d]
-    cam.location = (cx + d[0] * 3, cy + d[1] * 3, cz + d[2] * 3)
-    import mathutils
-    cam.rotation_euler = (mathutils.Vector((-d[0], -d[1], -d[2]))).to_track_quat('-Z', 'Y').to_euler()
-    p = os.path.join(OUT, f'preview_{TAG}_{v}.png')
-    scene.render.filepath = p
+    d = mathutils.Vector(dirs[v]).normalized()
+    cam.location = ctr + d * 3
+    cam.rotation_euler = (-d).to_track_quat('-Z', 'Y').to_euler()
+    scene.render.filepath = os.path.join(OUT, f'{TAG}_{v}.png')
     bpy.ops.render.render(write_still=True)
-    paths.append(p)
+    paths.append(scene.render.filepath)
+scene.camera = prev_cam
 result = dict(paths=paths)

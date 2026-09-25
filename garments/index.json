@@ -1,0 +1,11 @@
+{
+ "default": "crew-tee",
+ "garments": [
+  {
+   "slug": "crew-tee",
+   "name": "Crew-neck short-sleeve jersey",
+   "type": "set-in short sleeve, crew neck",
+   "path": "crew-tee/out/manifest.json"
+  }
+ ]
+}

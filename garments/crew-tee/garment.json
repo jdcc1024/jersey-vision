@@ -1,0 +1,97 @@
+{
+  "name": "Crew-neck short-sleeve jersey",
+  "slug": "crew-tee",
+  "type": "set-in short sleeve, crew neck",
+  "template": {"file": "template.png", "mm_per_px": 1.0, "background": [141, 141, 141], "bg_tolerance": 12},
+  "mesh": {"edge_mm": 12},
+
+  "pieces": {
+    "front": {
+      "label": "Front",
+      "at": [161, 643],
+      "corners": {"neckA": [197, 15], "neckB": [379, 15], "shA": [59, 55], "shB": [517, 55],
+                  "uaA": [15, 315], "uaB": [561, 315], "hemA": [15, 771], "hemB": [561, 771]},
+      "outline": ["neckA", "neckB", "shB", "uaB", "hemB", "hemA", "uaA", "shA"],
+      "straight": [["hemB", "hemA"]],
+      "place": {"type": "torso", "arc_deg": [-90, 90], "x_range": ["uaA", "uaB"], "hps": "neckA",
+                "top_edges": [["shA", "neckA"], ["neckB", "shB"]]}
+    },
+    "back": {
+      "label": "Back",
+      "at": [843, 611],
+      "corners": {"neckA": [751, 18], "neckB": [943, 18], "shA": [617, 55], "shB": [1076, 55],
+                  "uaA": [573, 315], "uaB": [1120, 315], "hemA": [573, 774], "hemB": [1120, 774]},
+      "outline": ["neckA", "neckB", "shB", "uaB", "hemB", "hemA", "uaA", "shA"],
+      "straight": [["hemB", "hemA"]],
+      "place": {"type": "torso", "arc_deg": [90, 270], "x_range": ["uaA", "uaB"], "hps": "neckA",
+                "top_edges": [["shA", "neckA"], ["neckB", "shB"]]}
+    },
+    "sleeve_L": {
+      "label": "Sleeve L",
+      "at": [1375, 362],
+      "corners": {"uaA": [1132, 356], "peak": [1390.5, 229], "uaB": [1649, 356],
+                  "foldA": [1187, 469], "foldB": [1594, 469], "hemA": [1177, 494], "hemB": [1604, 494]},
+      "outline": ["peak", "uaB", "foldB", "foldA", "uaA"],
+      "straight": [["foldB", "foldA"]],
+      "place": {"type": "arm", "side": "left", "front_half": "image_left", "peak": "peak",
+                "underarm": ["uaA", "uaB"], "hem": ["foldA", "foldB"], "anchor": ["front", "shB"]}
+    },
+    "sleeve_R": {
+      "label": "Sleeve R",
+      "at": [1374, 640],
+      "corners": {"uaA": [1132, 634], "peak": [1390.5, 507], "uaB": [1649, 634],
+                  "foldA": [1187, 747], "foldB": [1594, 747], "hemA": [1177, 772], "hemB": [1604, 772]},
+      "outline": ["peak", "uaB", "foldB", "foldA", "uaA"],
+      "straight": [["foldB", "foldA"]],
+      "place": {"type": "arm", "side": "right", "front_half": "image_right", "peak": "peak",
+                "underarm": ["uaA", "uaB"], "hem": ["foldA", "foldB"], "anchor": ["front", "shA"]}
+    }
+  },
+
+  "seams": [
+    {"name": "side seam L",       "a": ["front", "uaB", "hemB"],   "b": ["back", "uaA", "hemA"]},
+    {"name": "side seam R",       "a": ["front", "uaA", "hemA"],   "b": ["back", "uaB", "hemB"]},
+    {"name": "shoulder L",        "a": ["front", "neckB", "shB"],  "b": ["back", "neckA", "shA"]},
+    {"name": "shoulder R",        "a": ["front", "neckA", "shA"],  "b": ["back", "neckB", "shB"]},
+    {"name": "armhole L front",   "a": ["front", "shB", "uaB"],    "b": ["sleeve_L", "peak", "uaA"]},
+    {"name": "armhole L back",    "a": ["back", "shA", "uaA"],     "b": ["sleeve_L", "peak", "uaB"]},
+    {"name": "armhole R front",   "a": ["front", "shA", "uaA"],    "b": ["sleeve_R", "peak", "uaB"]},
+    {"name": "armhole R back",    "a": ["back", "shB", "uaB"],     "b": ["sleeve_R", "peak", "uaA"]},
+    {"name": "underarm L",        "a": ["sleeve_L", "uaA", "foldA"], "b": ["sleeve_L", "uaB", "foldB"]},
+    {"name": "underarm R",        "a": ["sleeve_R", "uaA", "foldA"], "b": ["sleeve_R", "uaB", "foldB"]}
+  ],
+
+  "turnups": [
+    {"piece": "sleeve_L", "fold": ["foldA", "foldB"], "outline": ["foldA", "foldB", "hemB", "hemA"],
+     "straight": [["hemB", "hemA"]], "weld": [[["foldA", "hemA"], ["foldB", "hemB"]]], "depth_mm": 3.5},
+    {"piece": "sleeve_R", "fold": ["foldA", "foldB"], "outline": ["foldA", "foldB", "hemB", "hemA"],
+     "straight": [["hemB", "hemA"]], "weld": [[["foldA", "hemA"], ["foldB", "hemB"]]], "depth_mm": 3.5}
+  ],
+
+  "bands": [
+    {"name": "neck", "label": "Neck rib", "rect": [1144, 133, 494, 61],
+     "loop": [["front", "neckB", "neckA"], ["back", "neckB", "neckA"]],
+     "u_breaks_px": [1144, 1392, 1637], "seam_edge_y_px": 193, "far_edge_y_px": 133,
+     "fold": true, "lean_deg": 28, "thickness_mm": 3, "axis": "up"}
+  ],
+
+  "patches": [
+    {"name": "inner_neck", "label": "Inner neck tape", "type": "strip", "host": "back",
+     "path": [["back", "neckA", "neckB"]], "extend": [["back", "neckA", "shA"], ["back", "neckB", "shB"]],
+     "rect": [1207, 67, 368, 39], "mirror_u": true, "offset_mm": 1.5},
+    {"name": "size_tag", "label": "Size tag", "type": "label", "host": "back",
+     "rect": [1350, 10, 83, 39], "center_px": [847, 112.5], "mirror_u": true, "offset_mm": 2.2}
+  ],
+
+  "body": {"fit_ease_mm": 13, "depth_ratio": 0.66, "arm_angle_deg": 50},
+  "sim": {"frames": 90, "gravity": 0.6},
+  "finish": {"smooth_iters": 12},
+  "texture": {"label_rects": [[1350, 10, 83, 39]]},
+  "export": {"object_name": "Jersey", "material_name": "JerseyPrint"},
+
+  "viewer": {
+    "notes": {"front": "outer, faces +Z", "back": "outer, faces -Z", "sleeve_L": "wearer's left",
+              "sleeve_R": "wearer's right", "neck": "folded, 30 mm", "inner_neck": "inside back", "size_tag": "inside back"},
+    "sample_graphic": {"name": "Smiley (sample)", "rect": [1350, 331, 82, 102], "knockout": "dark", "place": [452, 205, 62]}
+  }
+}

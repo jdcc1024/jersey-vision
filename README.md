@@ -1,106 +1,82 @@
 # Jersey Vision
 
-A 3D model of a sublimated jersey whose **UV map is the sewing template** used to cut and print the real shirts, plus **Jersey 3D Proof**, a three.js tool for placing artwork on the template and checking it on the 3D model.
+3D garment models whose **UV map is the sewing template** used to cut and print the real shirts,
+plus **Jersey 3D Proof**, a three.js tool for placing artwork on the template and checking it on
+the model. New garment types (long sleeve, raglan, tank, hockey, baseball, …) are added by writing
+a `garment.json` spec and running the pipeline. The `garment-model` skill walks Claude through it.
 
 ![Mockups vs. model](docs/images/compare_to_mockup.png)
-
-*Reference mockups (1st, 3rd) next to renders of the model (2nd, 4th).*
 
 ## Quick start
 
 ```bash
 npm install
-npm run serve            # http://localhost:5173/web/
+npm run serve            # http://localhost:5173/web/  (garment picker when there is more than one)
 ```
-
-- **Try the tool:**
-  - Open the page and drag the sample graphic on the print layout.
-  - Add your own PNG with **Add graphic**.
-  - Turn on **Place on model** and drag on the jersey itself.
-- **Test:** `npm test` runs a headless end-to-end smoke test with Playwright. Run `npx playwright install chromium` once before the first test.
-- **Build the single-file page:** `npm run build:artifact` writes `dist/jersey-proof.html`, the version published as the Claude artifact, with the model inlined.
+- `npm test` runs a headless end-to-end smoke test of the viewer (Playwright; `npx playwright install chromium` once).
+- `npm run build:artifact` writes `dist/jersey-proof.html`: one self-contained page with every registered
+  garment inlined (the version published as a Claude artifact).
+- `python pipeline/tests/run_engine_tests.py`: engine regression checks (no Blender needed).
 
 ## Repository layout
 
 | Path | What it is |
 |---|---|
-| `assets/template/template.png` | The sewing template, 1656 × 790 px, 1 px = 1 mm. **This is the UV space.** |
-| `assets/template/jersey_texture.png` | Sample print: the template with its colours bled past the cut lines |
-| `assets/model/jersey.glb` | three.js-ready model with the sample print embedded (12.6k verts, 24.4k tris) |
-| `assets/model/jersey_untextured.glb` | Same mesh and material, with no image |
-| `assets/model/jersey.blend` | Blender scene: final `Jersey` mesh, hidden `Mannequin`, camera and lights |
-| `web/index.html` | Jersey 3D Proof, a single page with no build step (three.js from jsDelivr via an import map) |
-| `web/tools/` | `serve.mjs` (dev server), `build-artifact.mjs` (single-file build) |
-| `web/tests/` | Playwright smoke test and its fixtures |
-| `pipeline/prep/` | Plain-Python steps: template → panel meshes, mannequin, sample texture |
-| `pipeline/blender/` | Blender steps: cloth sim with sewing, finishing, export (`run_all.py` does all three) |
-| `pipeline/tools/check_glb.py` | Reads a GLB back, reports mesh and UV facts, draws its UVs over the template |
-| `docs/` | Renders, the UV check image, and the reference mockups |
+| `garments/<slug>/garment.json` | the garment spec: pieces, corners, seams, placement, finishing, fit |
+| `garments/<slug>/template.png` | the sewing template = **the UV space** (`template_source.svg/pdf` if vector) |
+| `garments/<slug>/references/` | mockup images used for shape and side checks |
+| `garments/<slug>/out/` | `model.glb`, `model_untextured.glb`, `model.blend`, `texture.png`, `manifest.json`, renders |
+| `garments/<slug>/build/` | intermediates and check images (git-ignored, regenerable) |
+| `garments/index.json` | garments listed in the viewer |
+| `pipeline/gk.py` + `pipeline/garmentkit/` | Python half: inspect, pattern, seam map, mannequin, texture, check, register |
+| `pipeline/blender/` | Blender half: `sim.py`, `finish.py`, `export.py`, `run.py` (all), `preview.py` |
+| `pipeline/tests/` | engine tests and fixtures (a synthetic tank top) |
+| `web/` | Jersey 3D Proof (`index.html`, single file), dev server, artifact build, smoke test |
+| `.claude/skills/garment-model/` | the skill: workflow, spec reference, garment-type guide, troubleshooting |
 
-## The model
-
-- Units are metres and glTF is Y-up. **The front faces +Z**, the back faces −Z, and the wearer's left is +X. The bounding box is centred on the origin, about 76 × 76 × 31 cm.
-- One mesh (`Jersey`), one material (`JerseyPrint`, double-sided), one UV set (`TEXCOORD_0`).
-- Pieces:
-  - front and back;
-  - sleeve L (wearer's left) and sleeve R;
-  - folded neck rib;
-  - inner neck tape (inside the back neck);
-  - size tag (inside, reads correctly from inside).
-- Seams are welded for smooth shading. UV seams stay split, as glTF requires.
-- **Sleeve hem allowance:** the flared bottom 25 mm of each sleeve piece is turned up inside the sleeve.
-- **Neck rib:**
-  - The 60 mm strip folds in half to a 30 mm collar.
-  - The lower half of the strip (the edge with the LEFT / FRONT / RIGHT labels) is the outside face.
-  - The strip runs LEFT → FRONT → RIGHT → BACK → LEFT around the neckline.
-
-### UV convention
-
-A template pixel `(px, py)` maps to Blender UV `((px + 0.5) / 1656, 1 − (py + 0.5) / 790)`. In glTF and three.js, `v` runs top-down, so a texture made from the template must use `flipY = false`:
-
-```js
-const gltf = await new GLTFLoader().loadAsync('jersey.glb');
-const jersey = gltf.scene.getObjectByName('Jersey');
-const tex = await new THREE.TextureLoader().loadAsync('design.png');   // full template artboard
-tex.flipY = false;
-tex.colorSpace = THREE.SRGBColorSpace;
-jersey.material.map = tex;
-jersey.material.needsUpdate = true;
-```
-
-- **Artboard:** export artwork on the full template artboard, at any resolution with the 1656 : 790 ratio.
-- **Bleed:** extend the artwork 3–5 mm past every cut line. Otherwise texture filtering pulls in the grey artboard background as thin lines along the seams.
-
-## Rebuilding the model
+## Building a garment
 
 ```bash
 pip install -r pipeline/requirements.txt
-python pipeline/prep/pattern.py        # template -> pipeline/build/pattern.json (panel meshes, matched seam samples)
-python pipeline/prep/body.py           # mannequin collider -> pipeline/build/body.json
-python pipeline/prep/make_texture.py   # sample print -> assets/template/jersey_texture.png
-blender --background --python pipeline/blender/run_all.py   # sim + finish + export -> assets/model/
-python pipeline/tools/check_glb.py     # verify; writes pipeline/build/uv_layout_check.png
+python pipeline/gk.py new raglan-ls --template path/to/template.png --refs front.png back.png --name "Raglan long sleeve"
+python pipeline/gk.py inspect raglan-ls      # pieces + corner candidates -> build/inspect*.png
+#   ... write garments/raglan-ls/garment.json (see the skill's spec reference and garments/crew-tee) ...
+python pipeline/gk.py prep raglan-ls         # pattern + seam map (checkpoint) + mannequin + sample print
+blender --background --python pipeline/blender/run.py -- raglan-ls
+python pipeline/gk.py check raglan-ls        # UVs, scale, material -> build/uv_check.png
+python pipeline/gk.py compare raglan-ls      # references vs renders -> build/compare.png
+python pipeline/gk.py register raglan-ls     # add to the viewer
 ```
+How it works: each piece is triangulated in template pixels (so UV = template position) with
+matching vertex counts along every seam. The pieces are wrapped around a mannequin sized from the
+pattern and sewn together by Blender's cloth simulation, using the flat pattern as the cloth's rest
+shape so the fabric keeps the template's real dimensions. Seams are then welded and smoothed, and
+hem turn-ups, collars/bindings and inside labels are added.
 
-**What each Blender step does:**
-- The pattern pieces are wrapped around the mannequin.
-- The cloth rest shape is the flat pattern (shape key `Flat`), so the fabric keeps the template's true dimensions.
-- Sewing springs close the seams during a 90-frame sim.
-- Step 02 welds the seams, applies Taubin smoothing, then adds the hem turn-ups, collar, neck tape and size tag.
-- Step 03 exports both GLBs and the `.blend`.
+## Model conventions (all garments)
 
-The pipeline was built with Blender 5.2.2 (through Blender MCP). One full run takes about a minute.
+- glTF, Y-up, metres; **front faces +Z**, wearer's left is +X; centred on the origin.
+- One mesh, one material (double-sided), UV set `TEXCOORD_0`.
+- Template pixel `(px, py)` → UV `((px + 0.5) / W, (py + 0.5) / H)` in glTF (v top-down). Textures made from
+  the template must use `flipY = false`:
 
-**Settings you can change:**
-- **Fit and arm angle:** the `ak` / `bk` cross-sections and `ang` in `pipeline/prep/body.py`.
-- **Cloth:** bending 2.0, gravity 0.6 and sewing force 10 in `jersey_01_setup_sim.py`.
-- **Finishing:** `COLLAR_LEAN_DEG` (28°) and `SMOOTH_ITERS` (12) in `jersey_02_finish.py`.
-- **Mesh density:** `EDGE` in `pattern.py` (12 mm; 9 mm roughly doubles the triangle count).
-- **Seam allowance:** none is removed. If the cut lines include allowance, the outer 6–10 mm of each piece is really hidden in the seam.
+```js
+const gltf = await new GLTFLoader().loadAsync('garments/crew-tee/out/model.glb');
+const garment = gltf.scene.getObjectByName('Jersey');     // export.object_name in garment.json
+const tex = await new THREE.TextureLoader().loadAsync('design.png');   // full template artboard
+tex.flipY = false;
+tex.colorSpace = THREE.SRGBColorSpace;
+garment.material.map = tex;
+garment.material.needsUpdate = true;
+```
+Export artwork on the full template artboard (any resolution at the template's aspect ratio) and
+bleed it 3–5 mm past every cut line.
 
-## Open questions
+## Garments
 
-- Does the template include seam allowance?
-- Which half of the neck strip faces out?
-- The inner neck tape (367 mm) is longer than the back neckline. It is currently modelled running about 80 mm along each shoulder seam.
-- A size range (S–3XL) needs one template per size. `pattern.py` has per-template corner coordinates.
+| Slug | Type | Notes |
+|---|---|---|
+| `crew-tee` | set-in short sleeve, crew neck | sleeve hems turned up; neck rib folds to 30 mm (lower half outside); inner neck tape runs ~80 mm along each shoulder seam (assumption) |
+
+## Open questions (crew-tee)
+Does the template include seam allowance (none is removed)? Which half of the neck strip faces out?

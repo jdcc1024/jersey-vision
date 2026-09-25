@@ -1,0 +1,47 @@
+{
+  "name": "Tank top (synthetic test)",
+  "slug": "tank-top",
+  "type": "sleeveless, scoop neck, armhole bindings",
+  "template": {"file": "template.png", "mm_per_px": 1.0, "background": [141, 141, 141]},
+  "mesh": {"edge_mm": 14},
+  "pieces": {
+    "front": {
+      "label": "Front", "at": [275, 600],
+      "corners": {"neckA": [190, 20], "neckB": [360, 20], "shA": [120, 40], "shB": [430, 40],
+                  "uaA": [20, 380], "uaB": [530, 380], "hemA": [20, 760], "hemB": [530, 760]},
+      "outline": ["neckA", "neckB", "shB", "uaB", "hemB", "hemA", "uaA", "shA"],
+      "straight": [["hemB", "hemA"], ["neckB", "shB"], ["shA", "neckA"]],
+      "place": {"type": "torso", "arc_deg": [-90, 90], "x_range": ["uaA", "uaB"], "hps": "neckA",
+                "top_edges": [["shA", "neckA"], ["neckB", "shB"]]}
+    },
+    "back": {
+      "label": "Back", "at": [855, 600],
+      "corners": {"neckA": [770, 20], "neckB": [940, 20], "shA": [700, 40], "shB": [1010, 40],
+                  "uaA": [600, 380], "uaB": [1110, 380], "hemA": [600, 760], "hemB": [1110, 760]},
+      "outline": ["neckA", "neckB", "shB", "uaB", "hemB", "hemA", "uaA", "shA"],
+      "straight": [["hemB", "hemA"], ["neckB", "shB"], ["shA", "neckA"]],
+      "place": {"type": "torso", "arc_deg": [90, 270], "x_range": ["uaA", "uaB"], "hps": "neckA",
+                "top_edges": [["shA", "neckA"], ["neckB", "shB"]]}
+    }
+  },
+  "seams": [
+    {"name": "side seam L", "a": ["front", "uaB", "hemB"], "b": ["back", "uaA", "hemA"]},
+    {"name": "side seam R", "a": ["front", "uaA", "hemA"], "b": ["back", "uaB", "hemB"]},
+    {"name": "shoulder L",  "a": ["front", "neckB", "shB"], "b": ["back", "neckA", "shA"]},
+    {"name": "shoulder R",  "a": ["front", "neckA", "shA"], "b": ["back", "neckB", "shB"]}
+  ],
+  "bands": [
+    {"name": "neck", "label": "Neck rib", "rect": [1200, 20, 520, 50],
+     "loop": [["front", "neckB", "neckA"], ["back", "neckB", "neckA"]],
+     "seam_edge_y_px": 70, "far_edge_y_px": 20, "fold": true, "lean_deg": 25},
+    {"name": "armhole_L", "label": "Armhole binding L", "rect": [1200, 110, 780, 30],
+     "loop": [["front", "shB", "uaB"], ["back", "uaA", "shA"]],
+     "seam_edge_y_px": 140, "far_edge_y_px": 110, "fold": true, "lean_deg": 85},
+    {"name": "armhole_R", "label": "Armhole binding R", "rect": [1200, 170, 780, 30],
+     "loop": [["front", "uaA", "shA"], ["back", "shB", "uaB"]],
+     "seam_edge_y_px": 200, "far_edge_y_px": 170, "fold": true, "lean_deg": 85}
+  ],
+  "body": {"arm_angle_deg": 62},
+  "sim": {"frames": 80},
+  "export": {"object_name": "Tank", "material_name": "TankPrint"}
+}
