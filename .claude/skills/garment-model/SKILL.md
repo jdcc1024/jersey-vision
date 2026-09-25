@@ -127,6 +127,7 @@ python pipeline/gk.py compare <slug>    # references next to renders -> build/co
 Look at both images:
 
 - **`uv_check.png`:** the mesh must cover each piece exactly.
+- **`distortion.png`:** the colours should be even, mostly green, with no speckle. Speckle means text will look wavy. `check` fails when `neighbour_jump_p50` is above 0.05; it should be under 0.02.
 - **`compare.png`:** designs land in the same places as the mockups, the sides are right (e.g. left sleeve colour), and the silhouette and arm angle are plausible.
 
 Also check `finish` output: `max_seam_gap_mm` should be under about 5.

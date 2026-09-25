@@ -1,7 +1,8 @@
 """Verification of an exported model.
 
-check:   read out/model.glb back, report mesh/UV/material facts, fail on out-of-range UVs, draw the
-         UVs over the template -> build/uv_check.png
+check:   read out/model.glb back, report mesh/UV/material facts and texture distortion, fail on
+         out-of-range UVs or noisy distortion, draw the UVs over the template -> build/uv_check.png
+         and a distortion heat map -> build/distortion.png
 compare: put the reference mockups next to the Blender renders -> build/compare.png
 """
 from __future__ import annotations
@@ -53,23 +54,52 @@ def run(gdir, glb=None, verbose=True):
     pct = np.percentile(ratio[ok], [5, 25, 50, 75, 95])
     if abs(pct[2] - 1) > 0.12:
         problems.append(f'median 3D/pattern edge ratio {pct[2]:.3f}: model scale does not match the template scale')
+    # texture distortion: singular values of the UV->3D map per triangle (1.0 = print exactly as drawn)
+    Pm = pos[idx] * 1000.0
+    Um = uv[idx] * [W, H] * mmpp
+    dP = np.stack([Pm[:, 1] - Pm[:, 0], Pm[:, 2] - Pm[:, 0]], 2)
+    dU = np.stack([Um[:, 1] - Um[:, 0], Um[:, 2] - Um[:, 0]], 2)
+    good = np.abs(np.linalg.det(dU)) > 1e-3
+    sv = np.linalg.svd(np.einsum('nij,njk->nik', dP[good], np.linalg.inv(dU[good])), compute_uv=False)
+    aniso = sv[:, 0] / sv[:, 1]
+    tri = idx[good]
+    e2t = {}
+    for t, (a, b, c) in enumerate(tri):
+        for x, y in ((a, b), (b, c), (c, a)):
+            e2t.setdefault((min(x, y), max(x, y)), []).append(t)
+    prs = np.array([v for v in e2t.values() if len(v) == 2])
+    ls = np.log(sv)
+    nbr = np.abs(ls[prs[:, 0]] - ls[prs[:, 1]]).max(1)
+    if np.median(nbr) > 0.05:
+        problems.append(f'texture distortion changes sharply between neighbouring triangles (median {np.median(nbr):.3f}); '
+                        'printed text will look wavy. Smoothing is probably sliding vertices (finish.smooth_mode should be "normal")')
+    heat = Image.new('RGB', (W, H), (70, 70, 70)); dh = ImageDraw.Draw(heat)
+    Ug = uv[tri] * [W, H]
+    for t in range(len(tri)):
+        v = float(np.clip((aniso[t] - 1) / 0.35, 0, 1))
+        a_ = float(np.clip(np.log(sv[t, 0] * sv[t, 1]) / 0.3, -1, 1))
+        dh.polygon([tuple(q) for q in Ug[t]], fill=(int(40 + 215 * v), int(200 * (1 - v)), int(140 + 110 * a_)))
     S = 2 if max(W, H) < 3000 else 1
     img = T.resize((W * S, H * S)); d = ImageDraw.Draw(img)
     for f in idx:
         d.polygon([(uv[i, 0] * W * S, uv[i, 1] * H * S) for i in f], outline=(0, 255, 255))
     B = build_dir(gdir)
     img.save(B / 'uv_check.png')
+    heat.save(B / 'distortion.png')
     ext = pos.max(0) - pos.min(0)
     rep = dict(file=str(glb), bytes=glb.stat().st_size, nodes=[n.name for n in g.nodes], verts=int(len(pos)), tris=int(len(idx)),
                size_m=ext.round(4).tolist(), uv_min=uv.min(0).round(4).tolist(), uv_max=uv.max(0).round(4).tolist(),
                material=mat.name if mat else None, double_sided=bool(mat and mat.doubleSided),
                has_texture=bool(mat and mat.pbrMetallicRoughness and mat.pbrMetallicRoughness.baseColorTexture),
-               edge_ratio_p5_25_50_75_95=pct.round(3).tolist(), problems=problems)
+               edge_ratio_p5_25_50_75_95=pct.round(3).tolist(),
+               distortion=dict(anisotropy_p50=round(float(np.median(aniso)), 3), anisotropy_p90=round(float(np.percentile(aniso, 90)), 3),
+                               neighbour_jump_p50=round(float(np.median(nbr)), 4), neighbour_jump_p90=round(float(np.percentile(nbr, 90)), 4)),
+               problems=problems)
     (B / 'check.json').write_text(json.dumps(rep, indent=1))
     if verbose:
         for k, v in rep.items():
             print(f'  {k}: {v}')
-        print(f'  UV overlay -> {B / "uv_check.png"}')
+        print(f'  UV overlay -> {B / "uv_check.png"}; distortion heat map (green = true to the print, red = stretched one way) -> {B / "distortion.png"}')
     return rep
 
 

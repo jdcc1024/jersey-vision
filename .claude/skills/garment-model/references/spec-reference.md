@@ -17,7 +17,7 @@ Lengths ending in `_mm` are millimetres; `mm_per_px` converts between the two. D
 | `patches` | printed pieces that sit on the inside of a panel: neck tape, size tag |
 | `body` | mannequin fit and pose |
 | `sim` | cloth simulation settings |
-| `finish` | `{smooth_iters: 12}` (Taubin smoothing after welding) |
+| `finish` | `{smooth_iters: 12, smooth_mode: "normal"}`: Taubin smoothing after welding. `normal` moves vertices only along the surface normal (and across boundary edges) so triangles keep their shape relative to the UVs; `full` also slides vertices along the surface, which makes printed text look wavy, so don't use it for print proofs |
 | `texture` | `{label_rects: [[x,y,w,h], ...]}`: rects whose background becomes white in the sample print |
 | `export` | `{object_name, material_name, roughness}` |
 | `viewer` | `{notes: {piece: "text"}, labels: {piece: "Label"}, sample_graphic: {name, rect:[x,y,w,h], knockout:"dark", place:[cx, cy, width_px]}}` |

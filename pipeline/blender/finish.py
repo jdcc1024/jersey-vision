@@ -71,8 +71,19 @@ np.add.at(pos, inv, co); np.add.at(cnt, inv, 1); pos /= cnt[:, None]
 faces = inv[F]
 
 
-# ------------------------------------------------------------- 3. Taubin smoothing (no shrink)
-def taubin(pos, faces, iters=10, lam=0.5, mu=-0.53):
+# ------------------------------------------------------------- 3. Taubin smoothing (no shrink, no sliding)
+# Only the component of the Laplacian along the vertex normal (interior) or across the edge (boundary)
+# is applied. Letting vertices slide along the surface would change triangle shapes relative to their
+# fixed UVs and make printed text look wavy (see finish.smooth_mode in the spec reference).
+def _vn(p, faces):
+    fn = np.cross(p[faces[:, 1]] - p[faces[:, 0]], p[faces[:, 2]] - p[faces[:, 0]])
+    vn = np.zeros_like(p)
+    for k in range(3):
+        np.add.at(vn, faces[:, k], fn)
+    return vn / np.maximum(np.linalg.norm(vn, axis=1, keepdims=True), 1e-12)
+
+
+def taubin(pos, faces, iters=10, lam=0.5, mu=-0.53, mode='normal'):
     e = np.sort(np.r_[faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]], axis=1)
     ue, ec = np.unique(e, axis=0, return_counts=True)
     bnd = ue[ec == 1]
@@ -83,15 +94,30 @@ def taubin(pos, faces, iters=10, lam=0.5, mu=-0.53):
     src = np.concatenate([inner[:, 0], inner[:, 1], np.where(ib, mix[:, 1], mix[:, 0]), bnd[:, 0], bnd[:, 1]])
     dst = np.concatenate([inner[:, 1], inner[:, 0], np.where(ib, mix[:, 0], mix[:, 1]), bnd[:, 1], bnd[:, 0]])
     deg = np.bincount(src, minlength=len(pos)).astype(float); deg[deg == 0] = 1
+    # the two boundary neighbours of every boundary vertex (for the boundary tangent)
+    bn = -np.ones((len(pos), 2), int)
+    for a, b in bnd:
+        bn[a, 0 if bn[a, 0] < 0 else 1] = b
+        bn[b, 0 if bn[b, 0] < 0 else 1] = a
+    bv = np.where(isb & (bn[:, 1] >= 0))[0]
+    inn = ~isb
     p = pos.copy()
     for _ in range(iters):
         for f in (lam, mu):
             acc = np.zeros_like(p); np.add.at(acc, src, p[dst])
-            p = p + f * (acc / deg[:, None] - p)
+            L = acc / deg[:, None] - p
+            if mode == 'normal':
+                n = _vn(p, faces)
+                L[inn] = (L[inn] * n[inn]).sum(1, keepdims=True) * n[inn]
+                t = p[bn[bv, 0]] - p[bn[bv, 1]]
+                t /= np.maximum(np.linalg.norm(t, axis=1, keepdims=True), 1e-12)
+                L[bv] -= (L[bv] * t).sum(1, keepdims=True) * t
+            p = p + f * L
     return p
 
 
-pos = taubin(pos, faces, iters=int(globals().get('SMOOTH_ITERS', P['finish']['smooth_iters'])))
+pos = taubin(pos, faces, iters=int(globals().get('SMOOTH_ITERS', P['finish']['smooth_iters'])),
+             mode=P['finish'].get('smooth_mode', 'normal'))
 
 
 def vnormals(pos, faces):

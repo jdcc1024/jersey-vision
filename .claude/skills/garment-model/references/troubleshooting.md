@@ -17,6 +17,8 @@
 | Back hem lower than front | shallower back neck makes the back hang lower, normal within ~2 cm | reduce `sim.gravity` or raise the mannequin's back depth |
 | Collar flares outward / sits flat | band direction | `lean_deg` (20–30 standing, 85 binding), `axis: "up"` for crew necks |
 | Band edge floats off the neckline | loop segments don't meet at seams (warning in `pattern`) | order/orientation of `loop` segments |
+| Printed text / straight lines look wavy or kinked on the model | per-triangle distortion noise: smoothing slid vertices along the surface (old `smooth_mode: full`), or a noisy sim | keep `finish.smooth_mode: "normal"`; `gk check` reports `neighbour_jump_p50` (should be < 0.02) and writes `build/distortion.png` |
+| Print looks soft / pixelated up close | texture resolution, not geometry: 1 px/mm templates are soft | export artwork at 3–4 px/mm on the same artboard (UVs are normalised, so it maps identically) |
 | Thin grey lines along seams in three.js | artwork has no bleed past the cut lines | bleed 3–5 mm; `gk texture` does it for the sample print |
 | Texture upside down / shifted in three.js | `flipY` left true | `texture.flipY = false` for glTF |
 | Finish step output looks unsimulated | cloth cache reset (GarmentSim touched between frame chunks) | rerun sim → frames → finish without touching the object |

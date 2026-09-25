@@ -21,7 +21,7 @@ SPEC_DEFAULTS = {
             'sewing_force_max': 10.0, 'self_collision': True, 'collision_distance_mm': 3.0,
             'self_collision_distance_mm': 2.0, 'body_thickness_mm': 4.0, 'friction': 5.0,
             'wrap_clearance': [1.08, 1.15], 'arm_wrap_scale': 1.06, 'curl_mm': 120.0},
-    'finish': {'smooth_iters': 12},
+    'finish': {'smooth_iters': 12, 'smooth_mode': 'normal'},
     'export': {'object_name': 'Garment', 'material_name': 'GarmentPrint', 'roughness': 0.78},
 }
 
