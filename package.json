@@ -1,0 +1,17 @@
+{
+  "name": "jersey-vision",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sublimated jersey 3D model whose UVs are the sewing template, plus a three.js proofing/editing tool.",
+  "type": "module",
+  "scripts": {
+    "serve": "node web/tools/serve.mjs",
+    "build:artifact": "node web/tools/build-artifact.mjs",
+    "build:standalone": "node web/tools/build-artifact.mjs --full",
+    "test": "node web/tests/smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.55.0",
+    "three": "0.170.0"
+  }
+}

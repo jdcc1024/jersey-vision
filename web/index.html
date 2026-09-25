@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Jersey 3D Proof</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#ECEFF1; --panel:#F8F9FA; --ink:#14181D; --muted:#5A646E; --line:#CBD2D8;
+  --accent:#0B8795; --accent-ink:#FFFFFF; --stage-a:#E3E7EA; --stage-b:#C9D0D6; --chip:#FFFFFFD9;
+  --warn:#9A5B00; --warn-bg:#FFF3DF; --field:#FFFFFF; --sel:#0B8795;
+  --display:"Saira Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Barlow","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#111417; --panel:#191D21; --ink:#E6EAED; --muted:#9AA3AC; --line:#2B3137;
+    --accent:#3BC3D0; --accent-ink:#06282C; --stage-a:#1E2328; --stage-b:#0C0F11; --chip:#1D2227E6;
+    --warn:#F2B35A; --warn-bg:#2E2414; --field:#111417; --sel:#3BC3D0;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#111417; --panel:#191D21; --ink:#E6EAED; --muted:#9AA3AC; --line:#2B3137;
+  --accent:#3BC3D0; --accent-ink:#06282C; --stage-a:#1E2328; --stage-b:#0C0F11; --chip:#1D2227E6;
+  --warn:#F2B35A; --warn-bg:#2E2414; --field:#111417; --sel:#3BC3D0;
+}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--body);}
+.wrap{display:flex;flex-direction:column;min-height:100%;padding-inline:16px;padding-block:14px 16px;gap:12px;box-sizing:border-box}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font:700 30px/1 var(--display);letter-spacing:.02em;text-transform:uppercase;margin:0;text-wrap:balance}
+h1 span{color:var(--accent)}
+.meta{font:12px/1.4 var(--mono);color:var(--muted)}
+main{display:grid;grid-template-columns:minmax(0,1fr) minmax(400px,1.05fr);gap:16px;align-items:start}
+@media (max-width:1000px){main{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 12px);height:clamp(460px, calc(100dvh - 110px), 980px);border-radius:10px;overflow:hidden;
+  background:radial-gradient(120% 90% at 50% 38%,var(--stage-a) 0%,var(--stage-b) 100%);border:1px solid var(--line)}
+@media (max-width:1000px){.stage{position:relative;top:auto;height:auto;aspect-ratio:4/5;max-height:80vh;max-width:100%}}
+.stage.placing #gl{cursor:crosshair}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.views{position:absolute;left:12px;right:12px;bottom:12px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.chip{font:600 13px/1 var(--body);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);
+  background:var(--chip);color:var(--ink);padding:9px 12px;border-radius:999px;cursor:pointer;backdrop-filter:blur(6px)}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.chip:disabled{opacity:.45;cursor:not-allowed}
+.chip:focus-visible,.btn:focus-visible,#uv:focus-visible,.layer:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.status{position:absolute;top:12px;left:12px;right:12px;font:12px/1.3 var(--mono);color:var(--muted)}
+aside{display:flex;flex-direction:column;gap:14px;min-width:0}
+section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+h2{font:700 15px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;margin:0;color:var(--muted)}
+.uvbox{position:relative;border-radius:6px;overflow:hidden;border:1px solid var(--line);background:#8d8d8d;aspect-ratio:1656/790;max-width:100%}
+.uvbox.over{outline:2px dashed var(--accent);outline-offset:2px}
+#uv{display:block;width:100%;height:100%;touch-action:none;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{font:600 14px/1 var(--body);border-radius:6px;padding:9px 12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.small{font-size:13px;padding:7px 10px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+label.tog{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
+label.tog input{accent-color:var(--accent);width:16px;height:16px}
+.note{font-size:13px;color:var(--muted);margin:0}
+.warn{font-size:13px;color:var(--warn);background:var(--warn-bg);border-radius:6px;padding:8px 10px;margin:0}
+.props{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:480px){.props{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.props label{display:flex;flex-direction:column;gap:4px;font:600 11px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.props input{font:14px/1.2 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:6px;padding:7px 8px;width:100%;box-sizing:border-box}
+.slider{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
+.slider input{accent-color:var(--accent);width:100%}
+.slider output{font:13px var(--mono);color:var(--ink);min-width:4.5ch;text-align:right;font-variant-numeric:tabular-nums}
+.layers{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.layer{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:6px;padding:6px 8px;cursor:pointer;background:var(--field)}
+.layer[aria-selected="true"]{border-color:var(--sel);box-shadow:inset 0 0 0 1px var(--sel)}
+.layer canvas{width:36px;height:36px;border-radius:4px;background:repeating-conic-gradient(#9aa3ac44 0 25%,transparent 0 50%) 0 0/10px 10px}
+.layer .nm{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.layer .on{font:12px/1.3 var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.layer button{font:600 12px/1 var(--body);border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:5px;padding:6px 8px;cursor:pointer}
+.empty{font-size:13px;color:var(--muted);border:1px dashed var(--line);border-radius:6px;padding:10px;margin:0}
+.lower{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:14px}
+dt{color:var(--muted)} dd{margin:0;font:13px/1.5 var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+ul.pieces{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:14px}
+ul.pieces li{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+ul.pieces li:last-child{border-bottom:0;padding-bottom:0}
+ul.pieces small{color:var(--muted);font:12px/1.6 var(--mono);text-align:right}
+pre{margin:0;overflow-x:auto;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:10px;font:12px/1.55 var(--mono);color:var(--ink)}
+kbd{font:12px var(--mono);border:1px solid var(--line);border-radius:4px;padding:0 4px;background:var(--field)}
+input[type=file]{display:none}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Jersey <span>3D</span> Proof</h1>
+    <div class="meta">Template 1656 × 790 px · 1 px = 1 mm · UV = sewing pattern</div>
+  </header>
+  <main>
+    <div class="stage" id="stage">
+      <canvas id="gl" aria-label="3D jersey preview. Drag to orbit, scroll or pinch to zoom."></canvas>
+      <div class="status" id="status">Loading model…</div>
+      <div class="views" role="group" aria-label="Camera views">
+        <button class="chip" data-view="front" aria-pressed="true" id="v-front">Front</button>
+        <button class="chip" data-view="back" aria-pressed="false" id="v-back">Back</button>
+        <button class="chip" data-view="left" aria-pressed="false" id="v-left">Left</button>
+        <button class="chip" data-view="right" aria-pressed="false" id="v-right">Right</button>
+        <button class="chip" id="spin" aria-pressed="false">Turntable</button>
+        <button class="chip" id="place" aria-pressed="false" title="Drag on the jersey to move the selected graphic" disabled>Place on model</button>
+      </div>
+    </div>
+    <aside>
+      <section aria-labelledby="h-layout">
+        <div class="sec-head">
+          <h2 id="h-layout">Print layout</h2>
+          <span class="meta" id="cursor">—</span>
+        </div>
+        <div class="uvbox" id="uvbox">
+          <canvas id="uv" tabindex="0" aria-label="Sewing template. Drag a graphic to move it, drag a corner to resize, drag the round handle to rotate. Arrow keys nudge the selected graphic."></canvas>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="add">Add graphic</button>
+          <button class="btn" id="base">Replace base print</button>
+          <button class="btn" id="reset">Reset</button>
+          <input type="file" id="file-add" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+          <input type="file" id="file-base" accept="image/png,image/jpeg,image/webp">
+        </div>
+        <label class="tog"><input type="checkbox" id="cut" checked> Show cut lines</label>
+        <p class="warn" id="ratio" hidden></p>
+
+        <div id="editor" hidden>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="props">
+              <label for="p-x">X mm<input id="p-x" type="number" step="1"></label>
+              <label for="p-y">Y mm<input id="p-y" type="number" step="1"></label>
+              <label for="p-w">Width mm<input id="p-w" type="number" step="1" min="2"></label>
+              <label for="p-h">Height mm<input id="p-h" type="number" step="1" min="2"></label>
+            </div>
+            <div class="slider"><span>Size</span><input id="p-s" type="range" min="10" max="700" step="1"><output id="o-s">0</output></div>
+            <div class="slider"><span>Rotate</span><input id="p-r" type="range" min="-180" max="180" step="1"><output id="o-r">0°</output></div>
+            <div class="row">
+              <button class="btn small" id="center">Center across piece</button>
+              <button class="btn small" id="flip">Flip horizontally</button>
+              <button class="btn small" id="fwd">Bring forward</button>
+              <button class="btn small" id="dup">Duplicate</button>
+            </div>
+            <p class="note" id="cover"></p>
+          </div>
+        </div>
+
+        <div class="sec-head"><h2>Graphics</h2><button class="btn small" id="copy">Copy placements</button></div>
+        <ul class="layers" id="layers" role="listbox" aria-label="Graphics on the print"></ul>
+        <p class="note" id="copied" aria-live="polite">Drag in the layout or on the model. <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> nudge 1 mm (<kbd>Shift</kbd> 10 mm), <kbd>Delete</kbd> removes.</p>
+      </section>
+
+      <div class="lower">
+        <section aria-labelledby="h-pieces">
+          <h2 id="h-pieces">Pattern pieces</h2>
+          <ul class="pieces">
+            <li>Front <small>outer, faces +Z</small></li>
+            <li>Back <small>outer, faces −Z</small></li>
+            <li>Sleeve L <small>wearer's left</small></li>
+            <li>Sleeve R <small>wearer's right</small></li>
+            <li>Neck rib <small>folded, 30 mm</small></li>
+            <li>Inner neck tape <small>inside back</small></li>
+            <li>Size tag <small>inside back</small></li>
+          </ul>
+        </section>
+        <section aria-labelledby="h-model">
+          <h2 id="h-model">Model</h2>
+          <dl id="stats"><dt>File</dt><dd>jersey.glb</dd></dl>
+        </section>
+      </div>
+      <section aria-labelledby="h-code">
+        <h2 id="h-code">Swap the print in three.js</h2>
+<pre><code>const tex = await new THREE.TextureLoader()
+  .loadAsync('design.png');     // full template artboard
+tex.flipY = false;              // glTF UV convention
+tex.colorSpace = THREE.SRGBColorSpace;
+jersey.material.map = tex;
+jersey.material.needsUpdate = true;</code></pre>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+"three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const GLB_SOURCE = "../assets/model/jersey.glb";   // URL ending in .glb, or base64 GLB (tools/build-artifact.mjs inlines it)
+const TW = 1656, TH = 790;                     // template artboard, px == mm
+const TEX_SCALE = 2;                           // print texture resolution: 2 px per mm
+const PIECES = [                               // template boxes, used to name where a graphic lands
+  ['Front', 15, 15, 547, 757], ['Back', 573, 18, 548, 757], ['Sleeve L', 1132, 229, 518, 266],
+  ['Sleeve R', 1132, 507, 518, 266], ['Neck rib', 1144, 133, 494, 61], ['Inner neck tape', 1207, 67, 368, 39],
+  ['Size tag', 1350, 10, 83, 39]];
+const $ = (id) => document.getElementById(id);
+const stage = $('stage'), canvas = $('gl'), status = $('status');
+
+// ------------------------------------------------------------------ three.js scene
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.55;
+const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 20);
+const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(-1.5, 2, 2.5); scene.add(key);
+const rim = new THREE.DirectionalLight(0xdff6ff, 0.9); rim.position.set(2, 1.2, -2.5); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a939b, 0.5));
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.minDistance = 0.6; controls.maxDistance = 5;
+
+const VIEWS = { front: [0, 0.08, 2.6], back: [0, 0.08, -2.6], left: [2.6, 0.08, 0], right: [-2.6, 0.08, 0] };
+function setView(name) {
+  camera.position.set(...VIEWS[name]); controls.target.set(0, 0.02, 0); controls.update();
+  document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === name)));
+}
+document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+$('spin').addEventListener('click', (e) => {
+  controls.autoRotate = !controls.autoRotate; controls.autoRotateSpeed = 2.4;
+  e.currentTarget.setAttribute('aria-pressed', String(controls.autoRotate));
+});
+controls.addEventListener('start', () => document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', 'false')));
+function resize() {
+  const r = stage.getBoundingClientRect();
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / r.height; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+
+// ------------------------------------------------------------------ print composition
+const texCanvas = document.createElement('canvas');
+texCanvas.width = TW * TEX_SCALE; texCanvas.height = TH * TEX_SCALE;
+const texCtx = texCanvas.getContext('2d');
+const printTex = new THREE.CanvasTexture(texCanvas);
+printTex.flipY = false; printTex.colorSpace = THREE.SRGBColorSpace;
+
+let jersey = null, sampleBase = null, base = null, seamLines = null, uvEdges = null, pieceMask = null;
+let layers = [], selected = null, nextId = 1;
+
+function drawPrint(ctx, s, withBase = true) {
+  if (withBase) {
+    if (base) ctx.drawImage(base, 0, 0, TW * s, TH * s);
+    else { ctx.fillStyle = '#05090c'; ctx.fillRect(0, 0, TW * s, TH * s); }
+  }
+  for (const L of layers) {
+    ctx.save();
+    ctx.translate(L.x * s, L.y * s); ctx.rotate(L.rot * Math.PI / 180); ctx.scale(L.flip ? -1 : 1, 1);
+    ctx.drawImage(L.img, -L.w / 2 * s, -L.h / 2 * s, L.w * s, L.h * s);
+    ctx.restore();
+  }
+}
+let texDirty = false;
+function refresh() { texDirty = true; drawUV(); renderLayerList(); syncEditor(); }
+
+// ------------------------------------------------------------------ load model
+function loadModel(onLoad) {
+  const loader = new GLTFLoader();
+  const fail = (err) => { status.textContent = 'Could not load the model: ' + (err && err.message || err); };
+  if (GLB_SOURCE.endsWith('.glb')) loader.load(GLB_SOURCE, onLoad, undefined, fail);
+  else loader.parse(Uint8Array.from(atob(GLB_SOURCE), c => c.charCodeAt(0)).buffer, '', onLoad, fail);
+}
+loadModel((gltf) => {
+  gltf.scene.traverse(o => { if (o.isMesh) jersey = o; });
+  scene.add(gltf.scene);
+  const m = jersey.material;
+  m.side = THREE.DoubleSide; m.roughness = 0.82; m.metalness = 0;
+  sampleBase = base = m.map ? m.map.image : null;
+  if (m.map) m.map.dispose();
+  printTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  m.map = printTex; m.needsUpdate = true;
+  buildEdges(); writeStats();
+  addSampleGraphic();
+  status.textContent = 'Drag to orbit · scroll to zoom';
+  setView('front');
+});
+
+function buildEdges() {
+  const g = jersey.geometry, idx = g.index.array, uv = g.attributes.uv.array, pos = g.attributes.position.array;
+  const count = new Map();
+  for (let t = 0; t < idx.length; t += 3) for (let k = 0; k < 3; k++) {
+    const a = idx[t + k], b = idx[t + (k + 1) % 3];
+    const kk = a < b ? a * 1e6 + b : b * 1e6 + a;
+    count.set(kk, (count.get(kk) || 0) + 1);
+  }
+  const e3 = [], e2 = [];
+  for (const [kk, c] of count) {
+    if (c !== 1) continue;
+    const a = Math.floor(kk / 1e6), b = kk % 1e6;
+    e3.push(pos[a*3], pos[a*3+1], pos[a*3+2], pos[b*3], pos[b*3+1], pos[b*3+2]);
+    e2.push(uv[a*2] * TW, uv[a*2+1] * TH, uv[b*2] * TW, uv[b*2+1] * TH);
+  }
+  uvEdges = e2;
+  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(e3, 3));
+  seamLines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x19d3e3 }));
+  seamLines.visible = false; jersey.add(seamLines);
+  // mask of printable area (1 px per mm): which template pixels lie on a pattern piece
+  const mc = document.createElement('canvas'); mc.width = TW; mc.height = TH;
+  const mx = mc.getContext('2d'); mx.fillStyle = '#fff'; mx.beginPath();
+  for (let t = 0; t < idx.length; t += 3) {
+    const a = idx[t], b = idx[t+1], c = idx[t+2];
+    mx.moveTo(uv[a*2]*TW, uv[a*2+1]*TH); mx.lineTo(uv[b*2]*TW, uv[b*2+1]*TH); mx.lineTo(uv[c*2]*TW, uv[c*2+1]*TH); mx.closePath();
+  }
+  mx.fill();
+  pieceMask = mx.getImageData(0, 0, TW, TH).data;
+}
+function pieceAt(x, y) {
+  x = Math.round(x); y = Math.round(y);
+  if (x < 0 || y < 0 || x >= TW || y >= TH || !pieceMask || pieceMask[(y * TW + x) * 4] < 128) return null;
+  const p = PIECES.find(([, px, py, w, h]) => x >= px && x < px + w && y >= py && y < py + h);
+  return p ? p[0] : 'Pattern';
+}
+function coverage(L) {
+  const hit = new Set(); let off = 0, n = 0;
+  const cr = Math.cos(L.rot * Math.PI / 180), sr = Math.sin(L.rot * Math.PI / 180);
+  const a = L.alpha;
+  for (let j = 0; j < 12; j++) for (let i = 0; i < 12; i++) {
+    const u = (i + 0.5) / 12, v = (j + 0.5) / 12;
+    if (a && a[Math.floor(v * 16) * 16 + Math.floor((L.flip ? 1 - u : u) * 16)] < 40) continue;   // transparent part of the graphic
+    const lx = (u - 0.5) * L.w, ly = (v - 0.5) * L.h;
+    const p = pieceAt(L.x + lx * cr - ly * sr, L.y + lx * sr + ly * cr);
+    n++; if (p) hit.add(p); else off++;
+  }
+  return { pieces: [...hit], offPct: n ? Math.round(off / n * 100) : 0 };
+}
+
+function writeStats() {
+  const g = jersey.geometry; g.computeBoundingBox();
+  const s = new THREE.Vector3(); g.boundingBox.getSize(s);
+  const cm = v => (v * 100).toFixed(1);
+  const rows = [['File', 'jersey.glb'], ['Vertices', g.attributes.position.count.toLocaleString()],
+    ['Triangles', (g.index.count / 3).toLocaleString()], ['Size', `${cm(s.x)} × ${cm(s.y)} × ${cm(s.z)} cm`],
+    ['UV set', 'TEXCOORD_0'], ['Print texture', `${TW * TEX_SCALE} × ${TH * TEX_SCALE} px`]];
+  $('stats').innerHTML = rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
+}
+
+// ------------------------------------------------------------------ graphics (layers)
+function alphaGrid(img) {
+  const c = document.createElement('canvas'); c.width = c.height = 16;
+  const x = c.getContext('2d'); x.drawImage(img, 0, 0, 16, 16);
+  const d = x.getImageData(0, 0, 16, 16).data, out = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) out[i] = d[i * 4 + 3];
+  return out;
+}
+function addLayer(img, name, opts = {}) {
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const w = opts.w || Math.min(180, iw), h = w * ih / iw;
+  const L = { id: nextId++, name, img, x: opts.x ?? 288, y: opts.y ?? 260, w, h, ratio: ih / iw, rot: opts.rot || 0, flip: false, alpha: alphaGrid(img) };
+  layers.push(L); select(L); refresh(); return L;
+}
+function addSampleGraphic() {
+  if (!sampleBase) { refresh(); return; }
+  // cut the pink smiley off the left sleeve of the sample print and knock out the black
+  const sx = 1350, sy = 331, sw = 82, sh = 102, k = 4;
+  const c = document.createElement('canvas'); c.width = sw * k; c.height = sh * k;
+  const x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
+  x.drawImage(sampleBase, sx, sy, sw, sh, 0, 0, sw * k, sh * k);
+  const d = x.getImageData(0, 0, c.width, c.height);
+  for (let i = 0; i < d.data.length; i += 4) {
+    const m = Math.max(d.data[i], d.data[i+1], d.data[i+2]);
+    d.data[i+3] = Math.max(0, Math.min(255, (m - 45) * 3.2));
+  }
+  x.putImageData(d, 0, 0);
+  addLayer(c, 'Smiley (sample)', { x: 452, y: 205, w: 62 });
+}
+function select(L) { selected = L; renderLayerList(); syncEditor(); drawUV(); updatePlaceChip(); }
+function removeLayer(L) { layers = layers.filter(l => l !== L); if (selected === L) selected = layers[layers.length - 1] || null; refresh(); updatePlaceChip(); }
+
+function renderLayerList() {
+  const ul = $('layers'); ul.innerHTML = '';
+  if (!layers.length) {
+    const li = document.createElement('li'); li.className = 'empty';
+    li.textContent = 'No graphics yet. Add a logo, number or name as a PNG with a transparent background.';
+    ul.appendChild(li); return;
+  }
+  [...layers].reverse().forEach(L => {
+    const li = document.createElement('li'); li.className = 'layer'; li.tabIndex = 0;
+    li.setAttribute('role', 'option'); li.setAttribute('aria-selected', String(L === selected));
+    const th = document.createElement('canvas'); th.width = th.height = 72;
+    const tx = th.getContext('2d'); const r = Math.min(64 / L.w, 64 / L.h);
+    tx.drawImage(L.img, 36 - L.w * r / 2, 36 - L.h * r / 2, L.w * r, L.h * r);
+    const info = document.createElement('div');
+    const cov = coverage(L);
+    info.innerHTML = `<div class="nm"></div><div class="on">${cov.pieces.join(' + ') || 'Off the pattern'} · ${Math.round(L.w)} × ${Math.round(L.h)} mm</div>`;
+    info.querySelector('.nm').textContent = L.name;
+    const del = document.createElement('button'); del.textContent = 'Remove'; del.setAttribute('aria-label', 'Remove ' + L.name);
+    del.addEventListener('click', (e) => { e.stopPropagation(); removeLayer(L); });
+    li.append(th, info, del);
+    li.addEventListener('click', () => select(L));
+    li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(L); } });
+    ul.appendChild(li);
+  });
+}
+
+// ------------------------------------------------------------------ property editor
+const P = { x: $('p-x'), y: $('p-y'), w: $('p-w'), h: $('p-h'), s: $('p-s'), r: $('p-r') };
+function syncEditor() {
+  $('editor').hidden = !selected;
+  if (!selected) return;
+  const L = selected, act = document.activeElement;
+  const set = (el, v) => { if (el !== act) el.value = v; };
+  set(P.x, Math.round(L.x)); set(P.y, Math.round(L.y)); set(P.w, Math.round(L.w)); set(P.h, Math.round(L.h));
+  set(P.s, Math.round(L.w)); $('o-s').textContent = Math.round(L.w) + ' mm';
+  set(P.r, Math.round(L.rot)); $('o-r').textContent = Math.round(L.rot) + '°';
+  const cov = coverage(L);
+  let msg = `Center lands on ${pieceAt(L.x, L.y) || 'no piece (off the pattern)'}.`;
+  if (cov.pieces.length > 1) msg += ` Crosses a seam: split across ${cov.pieces.join(' and ')}.`;
+  if (cov.offPct > 0) msg += ` About ${cov.offPct}% falls outside the cut lines and won't print.`;
+  $('cover').textContent = msg;
+}
+const num = (el) => parseFloat(el.value);
+P.x.addEventListener('input', () => { if (selected && !isNaN(num(P.x))) { selected.x = num(P.x); refresh(); } });
+P.y.addEventListener('input', () => { if (selected && !isNaN(num(P.y))) { selected.y = num(P.y); refresh(); } });
+P.w.addEventListener('input', () => { if (selected && num(P.w) >= 2) { selected.w = num(P.w); selected.h = selected.w * selected.ratio; refresh(); } });
+P.h.addEventListener('input', () => { if (selected && num(P.h) >= 2) { selected.h = num(P.h); selected.w = selected.h / selected.ratio; refresh(); } });
+P.s.addEventListener('input', () => { if (selected) { selected.w = num(P.s); selected.h = selected.w * selected.ratio; refresh(); } });
+P.r.addEventListener('input', () => { if (selected) { selected.rot = num(P.r); refresh(); } });
+$('flip').addEventListener('click', () => { if (selected) { selected.flip = !selected.flip; refresh(); } });
+$('fwd').addEventListener('click', () => {
+  if (!selected) return; const i = layers.indexOf(selected);
+  if (i < layers.length - 1) { layers.splice(i, 1); layers.splice(i + 1, 0, selected); refresh(); }
+});
+$('dup').addEventListener('click', () => {
+  if (!selected) return; const L = selected;
+  const c = { ...L, id: nextId++, name: L.name + ' copy', x: L.x + 20, y: L.y + 20 };
+  layers.push(c); select(c); refresh();
+});
+$('center').addEventListener('click', () => {
+  if (!selected) return;
+  const p = PIECES.find(([n]) => n === pieceAt(selected.x, selected.y));
+  if (!p) return;
+  selected.x = p[1] + p[3] / 2; refresh();
+});
+
+// ------------------------------------------------------------------ UV layout editor (2D)
+const uv = $('uv'), uvCtx = uv.getContext('2d'), uvBox = $('uvbox');
+let uvScale = 1;
+function sizeUV() {
+  const r = uvBox.getBoundingClientRect(), dpr = Math.min(devicePixelRatio, 2);
+  uv.width = Math.round(r.width * dpr); uv.height = Math.round(r.height * dpr);
+  uvScale = uv.width / TW; drawUV();
+}
+new ResizeObserver(sizeUV).observe(uvBox);
+const HANDLE = 7;
+function corners(L) {
+  const cr = Math.cos(L.rot * Math.PI / 180), sr = Math.sin(L.rot * Math.PI / 180);
+  const pt = (lx, ly) => [L.x + lx * cr - ly * sr, L.y + lx * sr + ly * cr];
+  return { c: [pt(-L.w/2, -L.h/2), pt(L.w/2, -L.h/2), pt(L.w/2, L.h/2), pt(-L.w/2, L.h/2)],
+           rot: pt(0, -L.h / 2 - 22 * TW / (uvBox.clientWidth || TW)) };
+}
+function drawUV() {
+  if (!uvCtx) return;
+  const s = uvScale, dpr = uv.width / uvBox.clientWidth || 1;
+  uvCtx.setTransform(1, 0, 0, 1, 0, 0);
+  uvCtx.fillStyle = '#8d8d8d'; uvCtx.fillRect(0, 0, uv.width, uv.height);
+  drawPrint(uvCtx, s);
+  if ($('cut').checked && uvEdges) {
+    uvCtx.strokeStyle = '#19d3e3'; uvCtx.lineWidth = 1 * dpr; uvCtx.beginPath();
+    for (let i = 0; i < uvEdges.length; i += 4) { uvCtx.moveTo(uvEdges[i] * s, uvEdges[i+1] * s); uvCtx.lineTo(uvEdges[i+2] * s, uvEdges[i+3] * s); }
+    uvCtx.stroke();
+  }
+  if (selected) {
+    const { c, rot } = corners(selected);
+    const sel = getComputedStyle(document.documentElement).getPropertyValue('--sel').trim() || '#0B8795';
+    uvCtx.strokeStyle = '#ffffff'; uvCtx.lineWidth = 3 * dpr; uvCtx.beginPath();
+    c.forEach(([x, y], i) => i ? uvCtx.lineTo(x * s, y * s) : uvCtx.moveTo(x * s, y * s)); uvCtx.closePath(); uvCtx.stroke();
+    uvCtx.strokeStyle = sel; uvCtx.lineWidth = 1.5 * dpr; uvCtx.setLineDash([5 * dpr, 4 * dpr]); uvCtx.stroke(); uvCtx.setLineDash([]);
+    const top = [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2];
+    uvCtx.beginPath(); uvCtx.moveTo(top[0] * s, top[1] * s); uvCtx.lineTo(rot[0] * s, rot[1] * s); uvCtx.strokeStyle = '#ffffff'; uvCtx.lineWidth = 1.5 * dpr; uvCtx.stroke();
+    const hs = HANDLE * dpr;
+    for (const [x, y] of c) { uvCtx.fillStyle = '#ffffff'; uvCtx.fillRect(x * s - hs / 2, y * s - hs / 2, hs, hs); uvCtx.strokeStyle = sel; uvCtx.lineWidth = 1.5 * dpr; uvCtx.strokeRect(x * s - hs / 2, y * s - hs / 2, hs, hs); }
+    uvCtx.beginPath(); uvCtx.arc(rot[0] * s, rot[1] * s, hs * 0.65, 0, Math.PI * 2); uvCtx.fillStyle = '#ffffff'; uvCtx.fill(); uvCtx.strokeStyle = sel; uvCtx.stroke();
+  }
+}
+function toTemplate(e) {
+  const r = uv.getBoundingClientRect();
+  return [(e.clientX - r.left) / r.width * TW, (e.clientY - r.top) / r.height * TH];
+}
+function hitLayer(x, y) {
+  for (let i = layers.length - 1; i >= 0; i--) {
+    const L = layers[i], cr = Math.cos(-L.rot * Math.PI / 180), sr = Math.sin(-L.rot * Math.PI / 180);
+    const dx = x - L.x, dy = y - L.y, lx = dx * cr - dy * sr, ly = dx * sr + dy * cr;
+    if (Math.abs(lx) <= L.w / 2 && Math.abs(ly) <= L.h / 2) return L;
+  }
+  return null;
+}
+let drag = null;
+uv.addEventListener('pointerdown', (e) => {
+  const [x, y] = toTemplate(e); const tol = 9 / (uv.getBoundingClientRect().width / TW);
+  uv.focus({ preventScroll: true });
+  if (selected) {
+    const { c, rot } = corners(selected);
+    if (Math.hypot(x - rot[0], y - rot[1]) < tol) drag = { mode: 'rot', L: selected };
+    else if (c.some(([cx, cy]) => Math.hypot(x - cx, y - cy) < tol)) drag = { mode: 'scale', L: selected, d0: Math.hypot(x - selected.x, y - selected.y), w0: selected.w };
+  }
+  if (!drag) {
+    const L = hitLayer(x, y);
+    if (L) { select(L); drag = { mode: 'move', L, ox: x - L.x, oy: y - L.y }; }
+    else { selected = null; select(null); }
+  }
+  if (drag) uv.setPointerCapture(e.pointerId);
+});
+uv.addEventListener('pointermove', (e) => {
+  const [x, y] = toTemplate(e);
+  $('cursor').textContent = `x ${Math.round(x)} · y ${Math.round(y)} mm · ${pieceAt(x, y) || 'off pattern'}`;
+  if (!drag) {
+    let cur = 'default';
+    if (selected) {
+      const tol = 9 / (uv.getBoundingClientRect().width / TW), { c, rot } = corners(selected);
+      if (Math.hypot(x - rot[0], y - rot[1]) < tol) cur = 'grab';
+      else if (c.some(([cx, cy]) => Math.hypot(x - cx, y - cy) < tol)) cur = 'nwse-resize';
+    }
+    if (cur === 'default' && hitLayer(x, y)) cur = 'move';
+    uv.style.cursor = cur; return;
+  }
+  const L = drag.L;
+  if (drag.mode === 'move') { L.x = x - drag.ox; L.y = y - drag.oy; }
+  else if (drag.mode === 'scale') { L.w = Math.max(4, drag.w0 * Math.hypot(x - L.x, y - L.y) / drag.d0); L.h = L.w * L.ratio; }
+  else if (drag.mode === 'rot') { let a = Math.atan2(y - L.y, x - L.x) * 180 / Math.PI + 90; if (e.shiftKey) a = Math.round(a / 15) * 15; L.rot = ((a + 540) % 360) - 180; }
+  refresh();
+});
+const endDrag = () => { drag = null; };
+uv.addEventListener('pointerup', endDrag); uv.addEventListener('pointercancel', endDrag);
+uv.addEventListener('pointerleave', () => { if (!drag) $('cursor').textContent = '—'; });
+uv.addEventListener('keydown', (e) => {
+  if (!selected) return;
+  const st = e.shiftKey ? 10 : 1, mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, -st], ArrowDown: [0, st] }[e.key];
+  if (mv) { e.preventDefault(); selected.x += mv[0]; selected.y += mv[1]; refresh(); }
+  else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeLayer(selected); }
+  else if (e.key === '+' || e.key === '=') { selected.w *= 1.05; selected.h = selected.w * selected.ratio; refresh(); }
+  else if (e.key === '-') { selected.w /= 1.05; selected.h = selected.w * selected.ratio; refresh(); }
+});
+$('cut').addEventListener('change', drawUV);
+
+// ------------------------------------------------------------------ place on the 3D model
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let placing = false, placeDrag = false;
+function updatePlaceChip() {
+  $('place').disabled = !selected;
+  if (!selected && placing) togglePlace(false);
+}
+function togglePlace(on) {
+  placing = on; controls.enabled = !on;
+  $('place').setAttribute('aria-pressed', String(on)); stage.classList.toggle('placing', on);
+  if (seamLines) seamLines.visible = on;
+  status.textContent = on ? 'Drag on the jersey to move the selected graphic' : 'Drag to orbit · scroll to zoom';
+}
+$('place').addEventListener('click', () => togglePlace(!placing));
+function hitUV(e) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const h = ray.intersectObject(jersey, false)[0];
+  return h && h.uv ? [h.uv.x * TW, h.uv.y * TH] : null;
+}
+canvas.addEventListener('pointerdown', (e) => {
+  if (!placing || !selected || !jersey) return;
+  const p = hitUV(e); if (!p) return;
+  placeDrag = true; canvas.setPointerCapture(e.pointerId);
+  selected.x = p[0]; selected.y = p[1]; refresh();
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!placeDrag) return;
+  const p = hitUV(e); if (p) { selected.x = p[0]; selected.y = p[1]; refresh(); }
+});
+canvas.addEventListener('pointerup', () => { placeDrag = false; });
+
+// ------------------------------------------------------------------ files
+function readImage(f, cb) {
+  if (!f || !f.type.startsWith('image/')) { $('ratio').hidden = false; $('ratio').textContent = 'That file is not an image. Use PNG, JPG, WebP or SVG.'; return; }
+  const img = new Image();
+  img.onload = () => cb(img);
+  img.onerror = () => { $('ratio').hidden = false; $('ratio').textContent = 'The image could not be read. Try exporting it again as PNG.'; };
+  img.src = URL.createObjectURL(f);
+}
+function addGraphicFile(f) {
+  readImage(f, (img) => {
+    $('ratio').hidden = true;
+    const piece = selected ? PIECES.find(([n]) => n === pieceAt(selected.x, selected.y)) : null;
+    const [, px, py, pw, ph] = piece || PIECES[0];
+    addLayer(img, f.name, { x: px + pw / 2, y: py + Math.min(ph / 2, 260), w: Math.min(160, pw * 0.5) });
+  });
+}
+function setBaseFile(f) {
+  readImage(f, (img) => {
+    base = img; refresh();
+    const r = img.width / img.height, want = TW / TH, w = $('ratio');
+    if (Math.abs(r - want) / want > 0.01) { w.hidden = false; w.textContent = `This base print is ${r.toFixed(3)} : 1 but the template artboard is ${want.toFixed(3)} : 1 (1656 × 790), so it is stretched. Re-export it on the full template artboard.`; }
+    else w.hidden = true;
+  });
+}
+$('add').addEventListener('click', () => $('file-add').click());
+$('base').addEventListener('click', () => $('file-base').click());
+$('file-add').addEventListener('change', (e) => { addGraphicFile(e.target.files[0]); e.target.value = ''; });
+$('file-base').addEventListener('change', (e) => { setBaseFile(e.target.files[0]); e.target.value = ''; });
+$('reset').addEventListener('click', () => { base = sampleBase; layers = []; selected = null; $('ratio').hidden = true; addSampleGraphic(); updatePlaceChip(); });
+for (const t of [uvBox, stage]) {
+  t.addEventListener('dragover', (e) => { e.preventDefault(); uvBox.classList.add('over'); });
+  t.addEventListener('dragleave', () => uvBox.classList.remove('over'));
+  t.addEventListener('drop', (e) => {
+    e.preventDefault(); uvBox.classList.remove('over');
+    const f = e.dataTransfer.files[0]; if (!f) return;
+    readImage(f, (img) => {   // full-artboard images replace the base print, anything else becomes a graphic
+      if (Math.abs(img.width / img.height - TW / TH) / (TW / TH) < 0.01 && img.width >= TW * 0.9) { base = img; $('ratio').hidden = true; refresh(); }
+      else addLayer(img, f.name, { x: 288, y: 260, w: 160 });
+    });
+  });
+}
+$('copy').addEventListener('click', async () => {
+  const data = layers.map(L => ({ name: L.name, center_mm: [Math.round(L.x), Math.round(L.y)], size_mm: [Math.round(L.w), Math.round(L.h)], rotation_deg: Math.round(L.rot), flipped: L.flip, piece: pieceAt(L.x, L.y) }));
+  const txt = JSON.stringify({ template: '1656x790 mm', graphics: data }, null, 2);
+  try { await navigator.clipboard.writeText(txt); $('copied').textContent = `Copied ${data.length} placement${data.length === 1 ? '' : 's'} as JSON (mm from the template's top-left corner).`; }
+  catch { $('copied').textContent = txt; }
+});
+
+// ------------------------------------------------------------------ loop
+renderer.setAnimationLoop(() => {
+  if (texDirty) { texCtx.clearRect(0, 0, texCanvas.width, texCanvas.height); drawPrint(texCtx, TEX_SCALE); printTex.needsUpdate = true; texDirty = false; }
+  controls.update(); renderer.render(scene, camera);
+});
+window.__jersey = () => jersey;
+window.__layers = () => layers;
+</script>
+</body>
+</html>
