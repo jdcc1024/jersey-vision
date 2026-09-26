@@ -6,6 +6,12 @@
    "name": "Crew-neck short-sleeve jersey",
    "type": "set-in short sleeve, crew neck",
    "path": "crew-tee/out/manifest.json"
+  },
+  {
+   "slug": "raglan-tee",
+   "name": "Raglan short-sleeve jersey",
+   "type": "raglan short sleeve, crew neck",
+   "path": "raglan-tee/out/manifest.json"
   }
  ]
 }

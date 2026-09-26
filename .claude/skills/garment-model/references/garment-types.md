@@ -18,12 +18,17 @@ Arms usually hang lower in long-sleeve mockups: `arm_angle_deg` 60–70. Cuffs: 
 from `foldA`→`foldB`, closed by the underarm seam; `fold: true`, `lean_deg: 0`, `axis: "auto"`).
 Consider `sim.frames` 110 for the longer sleeve to settle.
 
-## Raglan sleeve ✓ (placement differs)
+## Raglan sleeve ✓ (`garments/raglan-tee`)
 Front and back have diagonal raglan seams from underarm to neck instead of shoulder seams; the
 sleeve's top edge runs to the neckline, and there is often a sleeve dart or a two-piece sleeve.
 - Torso `top_edges` = the raglan edges (the curl then follows them).
 - Sleeve `place.peak` = the corner at the middle of the sleeve's neck edge (or the dart point),
-  `anchor` = `[front, neckB]`-style **neck** corner, not a shoulder point.
+  `anchor` = `[front, neckB]`-style **neck** corner, not a shoulder point, and `via_shoulder: true`.
+- Sleeve neck edge: add corners `nfr` (front raglan meets neck), `peak`, `nbk`. The front half of
+  the sleeve is the side whose raglan edge matches the front raglan length (the back one is longer).
+- `body`: set `shoulder_half_width_mm` (~215) and `shoulder_drop_mm` (~45); there is no shoulder
+  corner to derive them from.
+- Inner neck tape: `fit: "crop"` (no shoulder seams to extend along).
 - Seams: front raglan ↔ sleeve front raglan, back raglan ↔ sleeve back raglan, underarm, side.
   With a shoulder dart or two-piece sleeve add that seam (dart edges sew to each other).
 - The neck band loop runs front neck → sleeve neck → back neck → other sleeve neck.

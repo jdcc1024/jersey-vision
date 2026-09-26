@@ -1,0 +1,113 @@
+{
+ "name": "Raglan short-sleeve jersey",
+ "slug": "raglan-tee",
+ "type": "raglan short sleeve, crew neck",
+ "template": {
+  "file": "../template.png",
+  "width_px": 2098,
+  "height_px": 787,
+  "mm_per_px": 1.0
+ },
+ "model": "model.glb",
+ "model_untextured": "model_untextured.glb",
+ "texture": "texture.png",
+ "object_name": "Jersey",
+ "axes": "glTF Y-up, metres, front faces +Z, wearer's left +X, centred on origin",
+ "uv": "u = (px + 0.5) / width_px, v = (py + 0.5) / height_px (glTF, top-down); textures use flipY = false",
+ "pieces": [
+  {
+   "name": "front",
+   "label": "Front",
+   "bbox": [
+    30,
+    54,
+    532,
+    723
+   ]
+  },
+  {
+   "name": "back",
+   "label": "Back",
+   "bbox": [
+    588,
+    20,
+    531,
+    757
+   ]
+  },
+  {
+   "name": "sleeve_R",
+   "label": "Sleeve R",
+   "bbox": [
+    1166,
+    327,
+    431,
+    447
+   ]
+  },
+  {
+   "name": "sleeve_L",
+   "label": "Sleeve L",
+   "bbox": [
+    1645,
+    327,
+    431,
+    447
+   ]
+  },
+  {
+   "name": "neck",
+   "label": "Neck rib",
+   "bbox": [
+    1330,
+    133,
+    511,
+    64
+   ]
+  },
+  {
+   "name": "inner_neck",
+   "label": "Inner neck tape",
+   "bbox": [
+    1411,
+    77,
+    361,
+    15
+   ]
+  },
+  {
+   "name": "size_tag",
+   "label": "Size tag",
+   "bbox": [
+    1545,
+    12,
+    80,
+    38
+   ]
+  }
+ ],
+ "piece_notes": {
+  "front": "outer, faces +Z",
+  "back": "outer, faces -Z",
+  "sleeve_L": "wearer's left, raglan",
+  "sleeve_R": "wearer's right, raglan",
+  "neck": "folded, 22 mm",
+  "inner_neck": "inside back",
+  "size_tag": "inside back"
+ },
+ "sample_graphic": {
+  "name": "Llama (sample)",
+  "rect": [
+   1822,
+   572,
+   76,
+   125
+  ],
+  "knockout": "dark",
+  "place": [
+   455,
+   190,
+   55
+  ]
+ }
+}

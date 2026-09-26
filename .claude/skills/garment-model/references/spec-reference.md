@@ -80,6 +80,11 @@ outward), so placement only has to be roughly right and **outside the body**.
   (or fold line). Widths and lengths are measured from these.
 - `anchor`: `[torsoPiece, corner]` where the peak attaches: shoulder point for set-in sleeves,
   neck point for raglan sleeves.
+- `via_shoulder` (default `false`): raglan sleeves. The sleeve's top line runs from the anchor (neck)
+  to the mannequin's shoulder point (`body.shoulder_half_width_mm`, `body.shoulder_drop_mm`), then
+  down the arm, instead of a straight cone from the anchor (which would bury the shoulder part of the
+  sleeve inside the body). Set the body's shoulder values explicitly for raglans, since there is no
+  shoulder corner to derive them from.
 
 **`flat`**: a plane anywhere (gussets, yokes, pockets, odd pieces).
 ```json
@@ -138,7 +143,9 @@ Strip (tape following an edge, on the inside):
  "mirror_u": true, "offset_mm": 1.5, "inset_px": 1, "rows": 5}
 ```
 `path` segments are concatenated; if the rect is longer than the path it is extended equally
-along the `extend` segments (start-side first). The strip's top edge (rect y) lies along the path,
+along the `extend` segments (start-side first). `"fit": "crop"` instead uses only the centre of the
+rect, as long as the path, at 1:1 (for a tape printed longer than the edge it sits on, e.g. a raglan
+back neck with no shoulder seam to extend along). The strip's top edge (rect y) lies along the path,
 the rest extends into the host panel. `mirror_u: true` when the print should read correctly from
 the inside.
 
@@ -159,6 +166,7 @@ Label (rectangle on the inside, e.g. printed size tag):
 | `arm_angle_deg` | 50 | arms below horizontal (tee mockups ≈ 50; tanks 60–65; hockey 35–45) |
 | `arm_length_mm`, `upper_arm_radius_mm`, `lower_arm_radius_mm` | from sleeves | arm capsule |
 | `shoulder_half_width_mm` | from sleeve anchors (else 215) | |
+| `shoulder_drop_mm` | from sleeve anchors | shoulder point below the neck point; set it for raglans (tee ≈ 45) |
 | `neck_radius_mm` | 66 | |
 | `upper_back_mm` (+ `upper_back_z_mm` -130, `upper_back_sigma_mm` 50) | 18 | extra mannequin depth over the shoulder blades, back side only. Without it the back panel's extra length above the shoulder blades buckles into a ridge/bump across the upper back |
 | `arms` | true | false removes the arms (vests without armholes, etc.) |

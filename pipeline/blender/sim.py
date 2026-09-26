@@ -103,10 +103,25 @@ for pi, pc in enumerate(P['pieces']):
         dirv = np.array([sgn * math.cos(ANG), 0, -math.sin(ANG)])
         upv = np.array([sgn * math.sin(ANG), 0, math.cos(ANG)])
         sidev = np.array([0, pl['front_sign'], 0.0])
-        r_cap = pl['w_ua'] / (2 * math.pi) * S['arm_wrap_scale']
-        hem_c = np.array(pl['anchor_m']) + dirv * pl['h_peak'] - upv * r_cap
-        V3[idx] = hem_c[None] - np.outer(h, dirv) + (r_place * np.cos(theta))[:, None] * upv[None] \
-            + (r_place * np.sin(theta))[:, None] * sidev[None]
+        if pl.get('via_shoulder'):
+            # raglan: the sleeve's top line runs from the anchor (neck) over the shoulder point, then down the arm
+            A = np.array(pl['anchor_m'], float)
+            Sp = np.array([sgn * P['body']['shoulder_x'], 0.0, -P['body']['shoulder_drop']])
+            L1 = float(np.linalg.norm(Sp - A)); u1 = (Sp - A) / L1
+            d = np.clip(pl['h_peak'] - h, 0, None)                    # distance from the peak along the top line
+            top = np.where((d <= L1)[:, None], A[None] + np.outer(d, u1), Sp[None] + np.outer(d - L1, dirv))
+            w = np.clip((d - (L1 - 0.04)) / 0.08, 0, 1)[:, None]        # blend the direction through the shoulder
+            t = (1 - w) * u1[None] + w * dirv[None]
+            t /= np.linalg.norm(t, axis=1, keepdims=True)
+            up_l = sgn * np.c_[-t[:, 2], np.zeros(len(t)), t[:, 0]]
+            up_l /= np.linalg.norm(up_l, axis=1, keepdims=True)
+            ctr = top - up_l * r_place[:, None]
+            V3[idx] = ctr + (r_place * np.cos(theta))[:, None] * up_l + (r_place * np.sin(theta))[:, None] * sidev[None]
+        else:
+            r_cap = pl['w_ua'] / (2 * math.pi) * S['arm_wrap_scale']
+            hem_c = np.array(pl['anchor_m']) + dirv * pl['h_peak'] - upv * r_cap
+            V3[idx] = hem_c[None] - np.outer(h, dirv) + (r_place * np.cos(theta))[:, None] * upv[None] \
+                + (r_place * np.sin(theta))[:, None] * sidev[None]
     elif pl['type'] == 'flat':
         o, r, d = (np.array(pl[k], float) for k in ('origin', 'right', 'down'))
         V3[idx] = o[None] + np.outer((px - pl['anchor'][0]) * M, r) + np.outer((py - pl['anchor'][1]) * M, d)

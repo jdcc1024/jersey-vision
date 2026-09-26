@@ -233,6 +233,11 @@ def build(gdir, verbose=True):
                 e0 = cut_poly(V2[sv(*pa['extend'][0])], ext)[::-1]
                 e1 = cut_poly(V2[sv(*pa['extend'][1])], ext)
                 path = _concat([e0, path, e1])
+            rect = list(pa['rect'])
+            if pa.get('fit') == 'crop' and plen(path) < rw:
+                # print only the middle of the strip, at 1:1 scale, where it is longer than its path
+                L = plen(path)
+                rect = [rx + (rw - L) / 2, ry, L, rh]
             path = resample(path, max(8, int(round(plen(path) / EDGE * 2))))
             tang = np.gradient(path, axis=0)
             tang /= np.linalg.norm(tang, axis=1, keepdims=True)
@@ -242,7 +247,7 @@ def build(gdir, verbose=True):
             if cv2.pointPolygonTest(hc, (float(probe[0]), float(probe[1])), False) < 0:
                 nrm = -nrm
             patches.append(dict(type='strip', name=pa.get('name', 'strip'), host=pid[host], path=path.tolist(), normals=nrm.tolist(),
-                                rect=pa['rect'], mirror_u=pa.get('mirror_u', False), inset_px=pa.get('inset_px', 1.0),
+                                rect=rect, mirror_u=pa.get('mirror_u', False), inset_px=pa.get('inset_px', 1.0),
                                 offset_m=pa.get('offset_mm', 1.5) / 1000.0, rows=pa.get('rows', 5)))
         elif pa['type'] == 'label':
             patches.append(dict(type='label', name=pa.get('name', 'label'), host=pid[host], center=pa['center_px'], rect=pa['rect'],
@@ -278,7 +283,8 @@ def build(gdir, verbose=True):
                                front_sign=1 if pl['front_half'] == 'image_left' else -1,
                                cx=float(pk[0]), hem_y=float(hem_y), w_hem=float(np.linalg.norm(h1 - h0)) * m_per_px,
                                w_ua=float(np.linalg.norm(u1 - u0)) * m_per_px, h_ua=float(hem_y - (u0[1] + u1[1]) / 2) * m_per_px,
-                               h_peak=float(hem_y - pk[1]) * m_per_px, anchor=pl['anchor']))
+                               h_peak=float(hem_y - pk[1]) * m_per_px, anchor=pl['anchor'],
+                               via_shoulder=bool(pl.get('via_shoulder', False))))
         elif pl.get('type') == 'flat':
             placed.append(dict(type='flat', origin=pl['origin_m'], right=pl.get('right', [1, 0, 0]), down=pl.get('down', [0, 0, -1]),
                                anchor=pl.get('anchor_px', [float(np.mean([c[0] for c in C.values()])), float(np.mean([c[1] for c in C.values()]))])))
@@ -387,6 +393,7 @@ def _body_params(P, spec, fit):
     else:
         sx, drop, r_up, r_lo, arm_len = 0.215, 0.045, 0.064, 0.052, 0.34
     sx = body.get('shoulder_half_width_mm', sx * 1000) / 1000
+    drop = body.get('shoulder_drop_mm', drop * 1000) / 1000
     params = dict(chest_a=fit['chest_a'], chest_b=fit['chest_b'], hps_to_hem=fit['hps_to_hem'],
                   below_hem=body['below_hem_mm'] / 1000, shoulder_x=sx, shoulder_drop=drop,
                   arm_angle_deg=body['arm_angle_deg'], arm_len=body.get('arm_length_mm', arm_len * 1000) / 1000,
