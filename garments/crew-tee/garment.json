@@ -83,8 +83,8 @@
      "rect": [1350, 10, 83, 39], "center_px": [847, 112.5], "mirror_u": true, "offset_mm": 2.2}
   ],
 
-  "body": {"fit_ease_mm": 13, "depth_ratio": 0.66, "arm_angle_deg": 50},
-  "sim": {"frames": 90, "gravity": 0.6},
+  "body": {"fit_ease_mm": 13, "depth_ratio": 0.66, "arm_angle_deg": 50, "upper_back_mm": 18},
+  "sim": {"frames": 90, "gravity": 1.0},
   "finish": {"smooth_iters": 12},
   "texture": {"label_rects": [[1350, 10, 83, 39]]},
   "export": {"object_name": "Jersey", "material_name": "JerseyPrint"},

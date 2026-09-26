@@ -44,7 +44,7 @@ single band whose `u_breaks_px` put the mitre at the V; the overlap itself is no
 Very wide body and sleeves, often shoulder yokes, underarm gussets, and sometimes a lace-up
 collar or V-neck insert.
 - Baggy fit: set `body.chest_circ_mm` to a real chest (~1000–1050) instead of deriving it from
-  the huge garment circumference, raise `sim.gravity` to 0.8 for drape, `arm_angle_deg` 35–45
+  the huge garment circumference, keep `sim.gravity` at 1.0 for drape, `arm_angle_deg` 35–45
   (hockey mockups hold the arms out).
 - Shoulder yokes: separate pieces sewn between front/back and sleeves; place them with `torso`
   (they sit over the shoulders: arcs covering e.g. `[40, 140]` on the wearer's left side, with

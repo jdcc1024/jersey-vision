@@ -13,6 +13,7 @@
 | Seam gap > 5 mm after sim (`max_seam_gap_mm`) | seams didn't finish closing | more `sim.frames`, higher `sewing_force_max` |
 | Fabric crumpled / wavy everywhere | low bending, or rest lengths not from the pattern | raise `sim.bending` (2–5); make sure `rest_shape_key` is set |
 | Sleeves crumpled at the cap | cap ease, arm too thin, sleeve starts far from arm | normal up to a point; thicken arm (`upper_arm_radius_mm`), lower `arm_wrap_scale` |
+| Bump / horizontal ridge across the upper back (shoulder blades) | back fabric above the shoulder blades has nothing to rest on and buckles; low gravity leaves it puffed up | `body.upper_back_mm` (default 18; try 12–25) and `sim.gravity` 1.0 |
 | Shirt hangs too loose / too tight | mannequin size | `body.fit_ease_mm` (smaller = fuller) or `chest_circ_mm` |
 | Back hem lower than front | shallower back neck makes the back hang lower, normal within ~2 cm | reduce `sim.gravity` or raise the mannequin's back depth |
 | Collar flares outward / sits flat | band direction | `lean_deg` (20–30 standing, 85 binding), `axis: "up"` for crew necks |

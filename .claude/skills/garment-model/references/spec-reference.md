@@ -160,11 +160,12 @@ Label (rectangle on the inside, e.g. printed size tag):
 | `arm_length_mm`, `upper_arm_radius_mm`, `lower_arm_radius_mm` | from sleeves | arm capsule |
 | `shoulder_half_width_mm` | from sleeve anchors (else 215) | |
 | `neck_radius_mm` | 66 | |
+| `upper_back_mm` (+ `upper_back_z_mm` -130, `upper_back_sigma_mm` 50) | 18 | extra mannequin depth over the shoulder blades, back side only. Without it the back panel's extra length above the shoulder blades buckles into a ridge/bump across the upper back |
 | `arms` | true | false removes the arms (vests without armholes, etc.) |
 | `below_hem_mm`, `voxel_mm` | 200, 6 | torso extends below the hem; SDF resolution |
 
 ## sim (Blender cloth)
-`frames 90, gravity 0.6 (0 until frame 30, full by 50), bending 2.0, tension 15, compression 30,
+`frames 90, gravity 1.0 (0 until frame 30, full by 50), bending 2.0, tension 15, compression 30,
 shear 5, mass 0.15, sewing_force_max 10, quality 10, self_collision true, collision_distance_mm 3,
 body_thickness_mm 4, friction 5, grow_from 0.84 (mannequin scales up from 84% by frame 26),
 wrap_clearance [1.08, 1.15], arm_wrap_scale 1.06, curl_mm 120`.

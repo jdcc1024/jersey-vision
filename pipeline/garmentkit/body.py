@@ -54,6 +54,10 @@ def build(gdir, verbose=True):
     X, Y, Z = np.meshgrid(xs, ys, zs, indexing='ij')
     Pg = (X, Y, Z)
     A = np.interp(Z, zk, ak); Bv = np.interp(Z, zk, bk); YC = np.interp(Z, zk, _Y_OFF)
+    ub = bp.get('upper_back', 0.0)            # extra depth over the shoulder blades (m), back side only
+    if ub:
+        bump = ub * np.exp(-((Z - bp.get('upper_back_z', -0.13)) / bp.get('upper_back_sigma', 0.05)) ** 2)
+        Bv = Bv + bump / 2; YC = YC + bump / 2
     r = np.sqrt((X / A) ** 2 + ((Y - YC) / Bv) ** 2)
     torso = (r - 1) * np.minimum(A, Bv)
     torso = np.maximum(torso, Z - (-0.06))

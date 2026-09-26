@@ -393,7 +393,8 @@ def _body_params(P, spec, fit):
                   arm_r_top=body.get('upper_arm_radius_mm', r_up * 1000) / 1000,
                   arm_r_end=body.get('lower_arm_radius_mm', r_lo * 1000) / 1000,
                   neck_r=body.get('neck_radius_mm', 66) / 1000, voxel=body['voxel_mm'] / 1000,
-                  arms=body.get('arms', True))
+                  arms=body.get('arms', True), upper_back=body.get('upper_back_mm', 0) / 1000,
+                  upper_back_z=body.get('upper_back_z_mm', -130) / 1000, upper_back_sigma=body.get('upper_back_sigma_mm', 50) / 1000)
     return params
 
 
