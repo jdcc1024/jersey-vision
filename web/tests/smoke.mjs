@@ -69,7 +69,21 @@ try {
   assert.match(await page.textContent('#cover'), /Back/);
   await page.screenshot({ path: path.join(OUT, 'desktop.png') });
 
-  // 5. phone width renders without horizontal scroll
+  // 5. lighting panel: dim the front light to 50%
+  await page.click('#light');
+  assert.equal(await page.isVisible('#lightpanel'), true);
+  await page.$eval('#l-front', (el) => { el.value = '50'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+  let lights = await page.evaluate(() => window.__lights());
+  assert.ok(Math.abs(lights.front - 0.8) < 1e-6, `front light not dimmed: ${JSON.stringify(lights)}`);
+  assert.equal(await page.textContent('#o-front'), '50%');
+  await page.click('#light-reset');
+  lights = await page.evaluate(() => window.__lights());
+  assert.ok(Math.abs(lights.front - 1.6) < 1e-6, `reset failed: ${JSON.stringify(lights)}`);
+  await page.$eval('#l-front', (el) => { el.value = '60'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.click('#v-front'); await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(OUT, 'lighting.png') });
+
+  // 6. phone width renders without horizontal scroll (lighting panel still open)
   await page.setViewportSize({ width: 400, height: 900 }); await page.waitForTimeout(800);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   assert.ok(overflow <= 0, `horizontal overflow of ${overflow}px at 400px width`);

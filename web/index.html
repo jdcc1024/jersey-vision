@@ -54,6 +54,11 @@ main{display:grid;grid-template-columns:minmax(0,1fr) minmax(400px,1.05fr);gap:1
 .chip:disabled{opacity:.45;cursor:not-allowed}
 .chip:focus-visible,.btn:focus-visible,#uv:focus-visible,.layer:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .status{position:absolute;top:12px;left:12px;right:12px;font:12px/1.3 var(--mono);color:var(--muted)}
+.lightpanel{position:absolute;right:12px;top:36px;width:min(300px,calc(100% - 24px));box-sizing:border-box;display:flex;flex-direction:column;gap:8px;
+  background:var(--chip);border:1px solid var(--line);border-radius:10px;padding:12px;backdrop-filter:blur(8px)}
+.lightpanel[hidden]{display:none}
+.lightpanel h2{font-size:13px}
+.lightpanel .slider{grid-template-columns:6.5em 1fr auto}
 aside{display:flex;flex-direction:column;gap:14px;min-width:0}
 section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
@@ -118,6 +123,14 @@ input[type=file]{display:none}
         <button class="chip" data-view="right" aria-pressed="false" id="v-right">Right</button>
         <button class="chip" id="spin" aria-pressed="false">Turntable</button>
         <button class="chip" id="place" aria-pressed="false" title="Drag on the jersey to move the selected graphic" disabled>Place on model</button>
+        <button class="chip" id="light" aria-pressed="false" aria-expanded="false" aria-controls="lightpanel">Lighting</button>
+      </div>
+      <div class="lightpanel" id="lightpanel" role="group" aria-labelledby="h-light" hidden>
+        <div class="sec-head"><h2 id="h-light">Lighting</h2><button class="btn small" id="light-reset">Reset</button></div>
+        <div class="slider"><label for="l-front">Front light</label><input id="l-front" type="range" min="0" max="200" step="5" value="100"><output id="o-front">100%</output></div>
+        <div class="slider"><label for="l-back">Back light</label><input id="l-back" type="range" min="0" max="200" step="5" value="100"><output id="o-back">100%</output></div>
+        <div class="slider"><label for="l-amb">Ambient</label><input id="l-amb" type="range" min="0" max="200" step="5" value="100"><output id="o-amb">100%</output></div>
+        <div class="slider"><label for="l-exp">Exposure</label><input id="l-exp" type="range" min="40" max="160" step="5" value="100"><output id="o-exp">100%</output></div>
       </div>
     </div>
     <aside>
@@ -221,7 +234,33 @@ scene.environmentIntensity = 0.55;
 const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 20);
 const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(-1.5, 2, 2.5); scene.add(key);
 const rim = new THREE.DirectionalLight(0xdff6ff, 0.9); rim.position.set(2, 1.2, -2.5); scene.add(rim);
-scene.add(new THREE.HemisphereLight(0xffffff, 0x8a939b, 0.5));
+const hemi = new THREE.HemisphereLight(0xffffff, 0x8a939b, 0.5); scene.add(hemi);
+
+// Lighting controls: each slider scales its light from the default (100%). Saved per browser.
+const LIGHT_BASE = { front: 1.6, back: 0.9, amb: [0.55, 0.5], exp: 1.05 };
+const LIGHT_KEYS = ['front', 'back', 'amb', 'exp'];
+const lightPct = { front: 100, back: 100, amb: 100, exp: 100 };
+function applyLights() {
+  key.intensity = LIGHT_BASE.front * lightPct.front / 100;
+  rim.intensity = LIGHT_BASE.back * lightPct.back / 100;
+  scene.environmentIntensity = LIGHT_BASE.amb[0] * lightPct.amb / 100;
+  hemi.intensity = LIGHT_BASE.amb[1] * lightPct.amb / 100;
+  renderer.toneMappingExposure = LIGHT_BASE.exp * lightPct.exp / 100;
+  for (const k of LIGHT_KEYS) { $('l-' + k).value = lightPct[k]; $('o-' + k).textContent = lightPct[k] + '%'; }
+  try { localStorage.setItem('jersey-proof-lights', JSON.stringify(lightPct)); } catch (e) { /* storage unavailable */ }
+}
+try {
+  const saved = JSON.parse(localStorage.getItem('jersey-proof-lights') || 'null');
+  if (saved) for (const k of LIGHT_KEYS) if (Number.isFinite(saved[k])) lightPct[k] = saved[k];
+} catch (e) { /* storage unavailable */ }
+for (const k of LIGHT_KEYS) $('l-' + k).addEventListener('input', (e) => { lightPct[k] = Number(e.target.value); applyLights(); });
+$('light-reset').addEventListener('click', () => { for (const k of LIGHT_KEYS) lightPct[k] = 100; applyLights(); });
+$('light').addEventListener('click', (e) => {
+  const open = $('lightpanel').hidden;
+  $('lightpanel').hidden = !open;
+  e.currentTarget.setAttribute('aria-pressed', String(open)); e.currentTarget.setAttribute('aria-expanded', String(open));
+});
+applyLights();
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true; controls.minDistance = 0.6; controls.maxDistance = 5;
 
@@ -661,6 +700,7 @@ renderer.setAnimationLoop(() => {
 boot().catch(fail);
 window.__jersey = () => jersey;
 window.__layers = () => layers;
+window.__lights = () => ({ front: key.intensity, back: rim.intensity, env: scene.environmentIntensity, hemi: hemi.intensity, exposure: renderer.toneMappingExposure });
 </script>
 </body>
 </html>
